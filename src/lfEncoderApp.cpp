@@ -24,13 +24,13 @@ int main(int argc, char **argv)
     if(args.printHelpIfPresent(helpText))
         return 0;
 
-    if(path == "" || outputFile == "")
+    if(!args["-i"] || !args["-o"])
     {
         std::cerr << "No paths specified. Use -h for help." << std::endl;
         return EXIT_FAILURE;
     }
 
-    if(format == "")
+    if(!args["-f"])
         format = DEFAULT_FORMAT;
     if(!args["-q"])
         quality = DEFAULT_QUALITY;

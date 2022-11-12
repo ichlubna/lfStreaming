@@ -7,8 +7,6 @@ extern "C" {
 #include <filesystem>
 #include "encoder.h"
 #include "muxing.h"
-#include "resources.h"
-#include "analyzer.h"
 #include "libs/loadingBar/loadingbar.hpp"
 
 Encoder::Encoder()
@@ -46,25 +44,24 @@ Encoder::StreamFormat Encoder::stringToFormat(std::string format) const
 
 void Encoder::encode(std::string inputFolder, std::string outputFile, float quality, std::string format) const
 {
-    auto files = Analyzer::listPath(inputFolder);
-    auto lastFileCoords = Analyzer::parseFilename(*files.rbegin()) + glm::uvec2(1);
+    auto files = Muxing::listPath(inputFolder);
+    auto lastFileCoords = Muxing::parseFilename(*files.rbegin()) + glm::uvec2(1);
     auto colsRows = lastFileCoords + glm::uvec2(1);
-    auto referenceCoords = lastFileCoords / 2u;
+    auto referenceCoords = lastFileCoords / glm::uvec2(2);
     auto videoFormat = stringToFormat(format);
     size_t crf = calculateCrf(videoFormat, quality);
 
     std::cout << "Encoding..." << std::endl;
     LoadingBar bar(files.size() + 1, true);
-    bar.print();
 
     size_t referenceIndex = referenceCoords.y * colsRows.x + referenceCoords.x;
     std::set<std::filesystem::path>::iterator it = files.begin();
     std::advance(it, referenceIndex);
     std::string referenceFrame = *it;
-    PairEncoder refFrame(referenceFrame, referenceFrame, crf, videoFormat);
+    std::filesystem::path path{inputFolder};
+    PairEncoder refFrame(path/referenceFrame, path/referenceFrame, crf, videoFormat);
     auto resolution = refFrame.getResolution();
-
-    Muxing::Muxer muxer{resolution, colsRows, referenceCoords, videoFormat};
+    Muxing::Muxer muxer(resolution, colsRows, referenceCoords, videoFormat);
     for(auto const &file : files)
         if(referenceFrame == file)
         {
@@ -73,11 +70,12 @@ void Encoder::encode(std::string inputFolder, std::string outputFile, float qual
         }
         else
         {
-            PairEncoder newFrame(referenceFrame, file, crf, videoFormat);
+            PairEncoder newFrame(path/referenceFrame, path/file, crf, videoFormat);
             bar.add();
             muxer << newFrame.getFramePacket();
         }
     muxer.save(outputFile);
+    bar.add();
 }
 
 void Encoder::FFEncoder::initH265()
@@ -194,11 +192,12 @@ Encoder::PairEncoder::Frame::~Frame()
 
 AVFrame *Encoder::PairEncoder::convertFrame(const AVFrame *inputFrame, AVPixelFormat pxFormat)
 {
+    constexpr int CHANNELS{3};
     AVFrame *outputFrame = av_frame_alloc();
     outputFrame->width = inputFrame->width;
     outputFrame->height = inputFrame->height;
-    outputFrame->format = format;
-    av_frame_get_buffer(outputFrame, 24);
+    outputFrame->format = pxFormat;
+    av_frame_get_buffer(outputFrame, CHANNELS*8);
     auto swsContext = sws_getContext(inputFrame->width, inputFrame->height, static_cast<AVPixelFormat>(inputFrame->format),
                                      inputFrame->width, inputFrame->height, pxFormat, SWS_BICUBIC, nullptr, nullptr, nullptr);
     if(!swsContext)

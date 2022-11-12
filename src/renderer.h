@@ -6,12 +6,13 @@ class Renderer
     public:
     Renderer();
     void render();
+    void init();
     void inputs();
     void setMousePosition(glm::vec2 position){mousePosition=position;};
-    bool endSignaled(){return endSignal;};
+    bool ready(){return prepared;};
 
     private:
-    bool endSignal{false};
+    bool prepared{false};
     unsigned int shaderProgram;
     glm::uvec2 initialResolution{1280, 720};
     const char *windowName{"Lightfield"};
@@ -21,6 +22,5 @@ class Renderer
     void loadShaders();
     void prepareQuad();
     void setupGL();
-    void init();
-    void quit(){endSignal=true;};
+    void quit(){prepared=false;};
 };

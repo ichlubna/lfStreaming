@@ -1,10 +1,15 @@
 #include "glm/glm.hpp"
 #include <vector>
+#include <set>
+#include <filesystem>
 #include <string>
 
 class Muxing
 {
 public:
+    static const std::set<std::filesystem::path> listPath(std::string path);
+    static glm::uvec2 parseFilename(std::string name);
+
     class EncodedData
     {
     public:

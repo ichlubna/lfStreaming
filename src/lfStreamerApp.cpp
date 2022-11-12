@@ -7,8 +7,11 @@ int main(int argc, char **argv)
     std::string path = static_cast<std::string>(args["-i"]);
 
     std::string helpText{ "Usage:\n"
-                          "Example: lfEncoder -i /MyAmazingMachine/thoseImages -q 1.0 -f H265 -o ./coolFile.lf\n"
+                          "Example: lfStreamer -i /MyAmazingMachine/LFVideo.lf\n"
                           "-i - encoded LF file\n"
+                          "-t - specifies camera trajectory, stores views at the positions and closes the app\n"
+                          "     trajectory format in normalized (0-1) LF grid coordinates: col_row,col_row,...\n"
+                          "     e.g.: -t 0.0_0.0,0.42_0.5,...\n"
                           "Use mouse to change the viewing angle.\n"
                         };
     if(args.printHelpIfPresent(helpText))
@@ -23,7 +26,10 @@ int main(int argc, char **argv)
     try
     {
         Decoder decoder(path);
-        decoder.decodeAndPlay();
+        if(!args["-t"])
+            decoder.decodeAndPlay();
+        else
+            decoder.decodeAndStore(args["-t"]);
     }
     catch(const std::exception &e)
     {

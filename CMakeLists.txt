@@ -35,8 +35,8 @@ add_library(ffmpeg INTERFACE)
 target_link_libraries(ffmpeg INTERFACE ${FFMPEG_LIBRARIES})
 target_include_directories(ffmpeg INTERFACE $<BUILD_INTERFACE:${FFMPEG_INCLUDE_DIRS})
 
-#set(ENCODER lfEncoder)
-#add_executable(${ENCODER} ${SOURCES_ENCODER})
+set(ENCODER lfEncoder)
+add_executable(${ENCODER} ${SOURCES_ENCODER})
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/src/libs)
@@ -44,6 +44,6 @@ include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/src/libs)
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)
 target_link_libraries(${PROJECT_NAME} glm glfw GLEW::GLEW ${OPENGL_LIBRARIES})
 
-#set_property(TARGET ${ENCODER} PROPERTY CXX_STANDARD 20)
-#target_link_libraries(${ENCODER} ffmpeg swscale)
+set_property(TARGET ${ENCODER} PROPERTY CXX_STANDARD 20)
+target_link_libraries(${ENCODER} ffmpeg swscale)
 
