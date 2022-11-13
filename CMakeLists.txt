@@ -14,6 +14,8 @@ src/decoder.cpp
 src/muxing.cpp
 src/renderer.cpp
 src/lfStreamerApp.cpp
+src/videoDecoder.cpp
+src/interpolator.cpp
 src/libs/loadingBar/loadingbar.hpp
 src/libs/arguments/arguments.hpp
 )

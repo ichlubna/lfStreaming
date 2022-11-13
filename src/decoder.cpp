@@ -3,7 +3,7 @@
 #include <fstream>
 #include "decoder.h"
 
-Decoder::Decoder(std::string inputPath) : input{inputPath}, renderer{std::make_unique<Renderer>()}
+Decoder::Decoder(std::string inputPath) : input{inputPath}, renderer{std::make_unique<Renderer>()}, demuxer{std::make_unique<Muxing::Demuxer>(inputPath)}
 {
     init();
 }
@@ -102,6 +102,11 @@ void Decoder::storeImage(std::vector<uint8_t> *data, glm::uvec2 resolution, std:
         if(pxId > 3)
             pxId = 0;
     }
+}
+
+void Decoder::interpolateView(glm::vec2 position)
+{
+
 }
 
 void Decoder::decodeAndStore(std::string trajectory)

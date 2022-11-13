@@ -1,0 +1,6 @@
+class VideoDecoder
+{
+    public:
+
+    private:
+};
