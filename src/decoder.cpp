@@ -25,7 +25,7 @@ void Decoder::decodeAndPlay()
         renderer->render();
 }
 
-std::vector<glm::vec2> Decoder::parseTrajectory(std::string textTrajectory)
+std::vector<glm::vec2> Decoder::parseTrajectory(std::string textTrajectory) const
 { 
     constexpr char pairDelimiter{','};
     constexpr char valueDelimiter{'_'};
@@ -49,6 +49,36 @@ std::vector<glm::vec2> Decoder::parseTrajectory(std::string textTrajectory)
         trajectory.push_back(position);
     }
     return trajectory;
+}
+
+Decoder::SelectedFrames Decoder::pickFromGrid(glm::uvec2 gridSize, glm::vec2 position) const
+{
+    SelectedFrames frames;
+    glm::vec2 gridPosition{glm::vec2(gridSize - 1u) *position};
+    glm::ivec2 downCoords{glm::floor(gridPosition)};
+    glm::ivec2 upCoords{glm::ceil(gridPosition)};
+
+    float weight;
+    glm::ivec2 currentCoords{0, 0};
+    glm::vec2 unitPos{glm::fract(gridPosition)};
+
+    currentCoords = {downCoords};
+    weight = (1 - unitPos.x) * (1 - unitPos.y);
+    frames.topLeft = {currentCoords, weight};
+
+    currentCoords = {upCoords.x, downCoords.y};
+    weight = unitPos.x * (1 - unitPos.y);
+    frames.topLeft = {currentCoords, weight};
+
+    currentCoords = {downCoords.x, upCoords.y};
+    weight = (1 - unitPos.x) * unitPos.y;
+    frames.topLeft = {currentCoords, weight};
+
+    currentCoords = {upCoords};
+    weight = unitPos.x * unitPos.y;
+    frames.topLeft = {currentCoords, weight};    
+
+    return frames;
 }
 
 void Decoder::storeImage(std::vector<uint8_t> *data, glm::uvec2 resolution, std::string path)
