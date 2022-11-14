@@ -3,7 +3,8 @@
 #include <fstream>
 #include "decoder.h"
 
-Decoder::Decoder(std::string inputPath) : input{inputPath}, renderer{std::make_unique<Renderer>()}, demuxer{std::make_unique<Muxing::Demuxer>(inputPath)}
+Decoder::Decoder(std::string inputPath) : renderer{std::make_unique<Renderer>()}, videoDecoder{std::make_unique<VideoDecoder>(inputPath)} 
+ 
 {
     init();
 }

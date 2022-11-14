@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
-project(lfStreamer LANGUAGES CXX)
-set(CMAKE_CXX_STANDARD 20)
+project(lfStreamer LANGUAGES CXX CUDA)
+#set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED on)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -pedantic -fmodules-ts")
 set(${PROJECT_NAME}_VERSION_MAJOR 0)
@@ -28,6 +28,7 @@ src/libs/loadingBar/loadingbar.hpp
 src/libs/arguments/arguments.hpp
 )
 
+find_package(CUDAToolkit)
 find_package(glm REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glfw3 REQUIRED)
@@ -42,10 +43,9 @@ add_executable(${ENCODER} ${SOURCES_ENCODER})
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/src/libs)
+include_directories(${CUDAToolkit_INCLUDE_DIRS}) 
 
-set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)
-target_link_libraries(${PROJECT_NAME} glm glfw GLEW::GLEW ${OPENGL_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} glm glfw GLEW::GLEW ${OPENGL_LIBRARIES} ${CUDA_LIBRARIES} nvcuvid cuda)
 
-set_property(TARGET ${ENCODER} PROPERTY CXX_STANDARD 20)
 target_link_libraries(${ENCODER} ffmpeg swscale)
 

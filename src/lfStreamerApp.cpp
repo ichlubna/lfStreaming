@@ -17,7 +17,7 @@ int main(int argc, char **argv)
     if(args.printHelpIfPresent(helpText))
         return 0;
 
-    if(path == "")
+    if(!args["-i"])
     {
         std::cerr << "No input specified. Use -h for help." << std::endl;
         return EXIT_FAILURE;

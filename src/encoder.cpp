@@ -46,7 +46,7 @@ void Encoder::encode(std::string inputFolder, std::string outputFile, float qual
 {
     auto files = Muxing::listPath(inputFolder);
     auto lastFileCoords = Muxing::parseFilename(*files.rbegin()) + glm::uvec2(1);
-    auto colsRows = lastFileCoords + glm::uvec2(1);
+    auto colsRows = lastFileCoords;
     auto referenceCoords = lastFileCoords / glm::uvec2(2);
     auto videoFormat = stringToFormat(format);
     size_t crf = calculateCrf(videoFormat, quality);

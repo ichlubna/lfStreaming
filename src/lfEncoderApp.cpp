@@ -16,7 +16,7 @@ int main(int argc, char **argv)
                           "Example: lfEncoder -i /MyAmazingMachine/thoseImages -q 1.0 -f H265 -o ./coolFile.lf\n"
                           "-i - folder with lf grid images\n"
                           "-- the files should be named as row_column (start with zero) naming such as: 0_0.jpg, 0_1.jpg, ...\n"
-                          "-q - quality of the encoded stream\n"
+                          "-q - normalized quality of the encoded stream (0-1)\n"
                           "-- higher value mean better quality but larger file\n"
                           "-f - format of the video stream: H265, AV1\n"
                           "-o - output file\n"

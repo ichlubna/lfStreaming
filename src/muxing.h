@@ -14,6 +14,7 @@ public:
     {
     public:
         EncodedData() {};
+        enum Format { H265=0, AV1=1 };
         void addData(const std::vector<uint8_t> *packetData);
         void initHeader(glm::uvec2 resolution, glm::uvec2 colsRows, glm::uvec2 reference, uint32_t format);
         std::vector<uint32_t> header;
@@ -32,9 +33,9 @@ public:
         {
             return {header[4], header[5]};
         }
-        uint32_t format()
+        Format format()
         {
-            return header[6];
+            return static_cast<Format>(header[6]);
         }
         size_t frameCount()
         {

@@ -2,7 +2,7 @@
 #include <vector>
 #include <memory>
 #include "renderer.h"
-#include "muxing.h"
+#include "videoDecoder.h"
 
 class Decoder
 {
@@ -27,9 +27,8 @@ class Decoder
         glm::vec3 topBottomMiddleInter() const { float top = topInter(); float bottom = bottomInter(); return {top, bottom, bottom/(top+bottom)};};
     };
 
-    std::string input;
-    std::unique_ptr<Muxing::Demuxer> demuxer;
     std::unique_ptr<Renderer> renderer;
+    std::unique_ptr<VideoDecoder> videoDecoder;
     void init();
     void initCodec();
     std::vector<glm::vec2> parseTrajectory(std::string textTrajectory) const;
