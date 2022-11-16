@@ -45,7 +45,6 @@ void VideoDecoder::checkGPU()
 
 void VideoDecoder::createDecoder()
 {;
-    constexpr int DECODED_COUNT{5};
     CUVIDDECODECREATEINFO videoDecodeCreateInfo{};
     videoDecodeCreateInfo.CodecType = getCodec();
     videoDecodeCreateInfo.ChromaFormat = chromaFormat;
@@ -61,8 +60,57 @@ void VideoDecoder::createDecoder()
     videoDecodeCreateInfo.ulTargetHeight = demuxer->data.resolution().y;
     if(cuvidCreateDecoder(&decoder, &videoDecodeCreateInfo) != CUDA_SUCCESS)
         throw std::runtime_error("Cannot create the decoder.");
-
 }
+
+void VideoDecoder::createParser()
+{
+    CUVIDPARSERPARAMS videoParserParameters{};
+    videoParserParameters.CodecType = getCodec();
+    videoParserParameters.ulMaxNumDecodeSurfaces = DECODED_COUNT;
+    videoParserParameters.ulMaxDisplayDelay = 0;
+    videoParserParameters.pUserData = this;
+    videoParserParameters.pfnSequenceCallback = videoSequenceCallback;
+    videoParserParameters.pfnDecodePicture = decodePictureCallback;
+    videoParserParameters.pfnDisplayPicture = displayPictureCallback;
+    if(cuvidCreateVideoParser(&parser, &videoParserParameters) != CUDA_SUCCESS)
+        throw std::runtime_error("Cannot create the parser.");
+}
+
+
+int VideoDecoder::videoSequence(CUVIDEOFORMAT *format)
+{
+    return DECODER_CALLBACK_SUCCESS;
+} 
+
+int VideoDecoder::decodePicture(CUVIDPICPARAMS *picParams)
+{
+    if (!decoder) 
+        throw std::runtime_error("Decoder not ready.");
+        //return 0; 
+    //m_nPicNumInDecodeOrder[pPicParams->CurrPicIdx] = m_nDecodePicCnt++;
+    cuvidDecodePicture(decoder, picParams);
+    return DECODER_CALLBACK_SUCCESS;
+}
+ 
+int VideoDecoder::displayPicture(CUVIDPARSERDISPINFO *dispInfo)
+{
+    CUVIDPROCPARAMS videoProcessingParameters{};
+    videoProcessingParameters.progressive_frame = dispInfo->progressive_frame;
+    /*deoProcessingParameters.second_field = dispInfo->repeat_first_field + 1;
+    videoProcessingParameters.top_field_first = dispInfo->top_field_first;
+    videoProcessingParameters.unpaired_field = dispInfo->createParserpeat_first_field < 0;*/
+    videoProcessingParameters.output_stream = 0;
+
+    DecodedFrame frame(decoder);
+    cuvidMapVideoFrame(decoder, dispInfo->picture_index, &(frame.frame),  &(frame.pitch), &videoProcessingParameters);
+    CUVIDGETDECODESTATUS status{};
+    if(cuvidGetDecodeStatus(decoder, dispInfo->picture_index, &status) != CUDA_SUCCESS)
+        throw std::runtime_error("Cannot check decoding status.");
+    if (status.decodeStatus == cuvidDecodeStatus_Error || status.decodeStatus == cuvidDecodeStatus_Error_Concealed)
+        throw std::runtime_error("Cannot get decoded frame.");
+    frames << frame;
+    return DECODER_CALLBACK_SUCCESS;
+} 
 
 void VideoDecoder::init()
 {
