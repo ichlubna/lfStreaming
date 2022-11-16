@@ -7,7 +7,7 @@
 class Decoder
 {
     public:
-    Decoder(std::string input);
+    Decoder(std::string input, size_t startFrame=0);
     void decodeAndPlay();
     void decodeAndStore(std::string trajectory);
 

@@ -1,5 +1,6 @@
 #include <cstring>
 #include <exception>
+#include <memory>
 #include "videoDecoder.h"
 
 VideoDecoder::VideoDecoder(std::string file) : demuxer{std::make_unique<Muxing::Demuxer>(file)}
@@ -14,7 +15,6 @@ cudaVideoCodec VideoDecoder::getCodec()
     //    codec = cudaVideoCodec_AV1;
     return codec;
 }
-#include <iostream>
 
 void initContext()
 {
@@ -84,10 +84,6 @@ int VideoDecoder::videoSequence(CUVIDEOFORMAT *format)
 
 int VideoDecoder::decodePicture(CUVIDPICPARAMS *picParams)
 {
-    if (!decoder) 
-        throw std::runtime_error("Decoder not ready.");
-        //return 0; 
-    //m_nPicNumInDecodeOrder[pPicParams->CurrPicIdx] = m_nDecodePicCnt++;
     cuvidDecodePicture(decoder, picParams);
     return DECODER_CALLBACK_SUCCESS;
 }
@@ -111,6 +107,34 @@ int VideoDecoder::displayPicture(CUVIDPARSERDISPINFO *dispInfo)
     frames << frame;
     return DECODER_CALLBACK_SUCCESS;
 } 
+
+void VideoDecoder::incrementTime()
+{
+    auto newTime = time+1;
+    if(newTime >= demuxer->data.timeFrameCount())
+         newTime=0;
+    seek(newTime);
+}
+
+void VideoDecoder::seek(size_t newTime)
+{
+    time = newTime;
+    decode(demuxer->getReferencePacket(time));
+}
+
+void VideoDecoder::decode(Muxing::Demuxer::PacketPointer packetPointer)
+{
+    CUVIDSOURCEDATAPACKET packet{};
+    packet.payload = packetPointer.data;
+    packet.payload_size = packetPointer.size;
+    packet.flags = CUVID_PKT_TIMESTAMP;
+    packet.timestamp = decodedNumber;
+    if (packetPointer.size == 0) 
+        packet.flags |= CUVID_PKT_ENDOFSTREAM;
+
+    if(cuvidParseVideoData(parser, &packet) != CUDA_SUCCESS)
+        throw std::runtime_error("Cannot parse packet.");
+}
 
 void VideoDecoder::init()
 {

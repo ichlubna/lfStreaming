@@ -23,15 +23,18 @@ glm::uvec2 Muxing::parseFilename(std::string name)
 
 void Muxing::EncodedData::addData(const std::vector<uint8_t> *packetData)
 {
+    references.push_back(0);
     offsets.push_back(packets.size());
     packets.insert(packets.end(), packetData->begin(), packetData->end());
 }
 
-void Muxing::EncodedData::initHeader(glm::uvec2 resolution, glm::uvec2 rowsCols, glm::uvec2 reference, uint32_t format)
+void Muxing::EncodedData::initHeader(glm::uvec2 resolution, glm::uvec2 colsRows, uint32_t format, uint32_t timeFrameCount)
 {
-    header = {resolution.x, resolution.y, rowsCols.x, rowsCols.y, reference.x, reference.y, format};
-    packets.reserve(rowsCols.x * rowsCols.y);
-    packets.push_back(0);
+    header = {resolution.x, resolution.y, colsRows.x, colsRows.y, format, timeFrameCount};
+    size_t count{colsRows.x * colsRows.y * timeFrameCount}; 
+    offsets.reserve(count);
+    references.reserve(count);
+    offsets.push_back(0);
 }
 
 void Muxing::Muxer::save(std::string filePath)
@@ -41,6 +44,7 @@ void Muxing::Muxer::save(std::string filePath)
     constexpr size_t BYTE_COUNT{4};
     fos.write(reinterpret_cast<const char *>(data.header.data()), data.header.size()*BYTE_COUNT);
     fos.write(reinterpret_cast<const char *>(data.offsets.data()), data.offsets.size()*BYTE_COUNT);
+    fos.write(reinterpret_cast<const char *>(data.references.data()), data.references.size()*BYTE_COUNT);
     fos.write(reinterpret_cast<const char *>(data.packets.data()), data.packets.size()*BYTE_COUNT);
     fos.close();
 }
@@ -58,15 +62,41 @@ Muxing::Demuxer::Demuxer(std::string filePath)
     data.header.resize(EncodedData::HEADER_VALUES_COUNT);
     fis.read(reinterpret_cast<char *>(data.header.data()), BYTE_COUNT*EncodedData::HEADER_VALUES_COUNT);
 
-    data.offsets.resize(data.frameCount());
+    data.offsets.resize(data.gridSize());
     fis.read(reinterpret_cast<char *>(data.offsets.data()), data.offsets.size()*BYTE_COUNT);
+    data.packets.resize(data.references.back());
+    fis.read(reinterpret_cast<char *>(data.references.data()), data.references.back());
     data.packets.resize(data.offsets.back());
     fis.read(reinterpret_cast<char *>(data.packets.data()), data.offsets.back());
 }
 
-std::vector<uint8_t> Muxing::Demuxer::getPacket(size_t index)
+size_t Muxing::Demuxer::getLinearIndex(glm::ivec3 colsRowsTime)
 {
+    return data.gridSize()*colsRowsTime.z + colsRowsTime.y*data.colsRows().x + colsRowsTime.x; 
+}
+
+std::vector<uint8_t> Muxing::Demuxer::copyPacket(glm::ivec3 colsRowsTime)
+{
+    size_t index = getLinearIndex(colsRowsTime);
     size_t start = data.offsets[index];
     size_t end = data.offsets[index + 1];
     return std::vector<uint8_t>(data.packets.begin() + start, data.packets.begin() + end);
+}
+
+const Muxing::Demuxer::PacketPointer Muxing::Demuxer::getReferencePacket(int time)
+{
+    PacketPointer packetPointer;
+    size_t referenceID = data.references[time];
+    packetPointer.data = &data.packets.data()[data.offsets[referenceID]];
+    packetPointer.size = data.offsets[referenceID+1] - data.offsets[referenceID];
+    return packetPointer;
+}
+
+const Muxing::Demuxer::PacketPointer Muxing::Demuxer::getPacket(glm::ivec3 colsRowsTime)
+{
+    PacketPointer packetPointer;
+    size_t index = getLinearIndex(colsRowsTime);
+    packetPointer.data = &data.packets.data()[data.offsets[index]];
+    packetPointer.size = data.offsets[index+1] - data.offsets[index];
+    return packetPointer;
 }

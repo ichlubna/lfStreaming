@@ -6,12 +6,14 @@ extern "C" {
 #include <vector>
 #include <string>
 #include <set>
+#include <memory>
+#include "muxing.h"
 
 class Encoder
 {
 public:
-    Encoder();
-    void encode(std::string inputFolder, std::string outputFile, float quality, std::string format) const;
+    Encoder() : muxer{std::make_unique<Muxing::Muxer>()} {};
+    void encode(std::string inputDir, std::string outputFile, float quality, std::string format);
     const std::vector<uint8_t> extractPacketData(AVPacket *packet) const;
     static const AVPixelFormat outputPixelFormat{AV_PIX_FMT_YUV444P};
     enum StreamFormat { H265 = 0, AV1 = 1 };
@@ -107,5 +109,8 @@ private:
     };
 
     size_t calculateCrf(StreamFormat format, float quality) const;
+    size_t timeFrameCount{0};
     StreamFormat stringToFormat(std::string) const;
+    void encodeTimeFrame(std::string inputDir, float quality, std::string format);
+    std::unique_ptr<Muxing::Muxer> muxer;
 };

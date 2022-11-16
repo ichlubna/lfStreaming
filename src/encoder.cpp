@@ -6,12 +6,7 @@ extern "C" {
 #include <stdexcept>
 #include <filesystem>
 #include "encoder.h"
-#include "muxing.h"
 #include "libs/loadingBar/loadingbar.hpp"
-
-Encoder::Encoder()
-{
-}
 
 const std::vector<uint8_t> Encoder::extractPacketData(AVPacket *packet) const
 {
@@ -42,9 +37,19 @@ Encoder::StreamFormat Encoder::stringToFormat(std::string format) const
         throw std::runtime_error("The specified video stream format is not supported.");
 }
 
-void Encoder::encode(std::string inputFolder, std::string outputFile, float quality, std::string format) const
+
+void Encoder::encode(std::string inputDir, std::string outputFile, float quality, std::string format)
 {
-    auto files = Muxing::listPath(inputFolder);
+    auto timeFrameDirs = Muxing::listPath(inputDir);
+    timeFrameCount = timeFrameDirs.size();
+    for(auto const &dir : timeFrameDirs)
+        encodeTimeFrame(dir, quality, format);
+    muxer->save(outputFile);
+}
+
+void Encoder::encodeTimeFrame(std::string inputDir, float quality, std::string format)
+{
+    auto files = Muxing::listPath(inputDir);
     auto lastFileCoords = Muxing::parseFilename(*files.rbegin()) + glm::uvec2(1);
     auto colsRows = lastFileCoords;
     auto referenceCoords = lastFileCoords / glm::uvec2(2);
@@ -58,23 +63,25 @@ void Encoder::encode(std::string inputFolder, std::string outputFile, float qual
     std::set<std::filesystem::path>::iterator it = files.begin();
     std::advance(it, referenceIndex);
     std::string referenceFrame = *it;
-    std::filesystem::path path{inputFolder};
+    std::filesystem::path path{inputDir};
     PairEncoder refFrame(path/referenceFrame, path/referenceFrame, crf, videoFormat);
     auto resolution = refFrame.getResolution();
-    Muxing::Muxer muxer(resolution, colsRows, referenceCoords, videoFormat);
+    
+    if(!muxer->isInitialized())
+        muxer->init(resolution, colsRows, videoFormat, timeFrameCount);
+
     for(auto const &file : files)
         if(referenceFrame == file)
         {
-            muxer << refFrame.getReferencePacket();
+            *muxer << refFrame.getReferencePacket();
             bar.add();
         }
         else
         {
             PairEncoder newFrame(path/referenceFrame, path/file, crf, videoFormat);
             bar.add();
-            muxer << newFrame.getFramePacket();
+            *muxer << newFrame.getFramePacket();
         }
-    muxer.save(outputFile);
     bar.add();
 }
 

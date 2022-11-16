@@ -9,7 +9,8 @@ int main(int argc, char **argv)
     std::string helpText{ "Usage:\n"
                           "Example: lfStreamer -i /MyAmazingMachine/LFVideo.lf\n"
                           "-i - encoded LF file\n"
-                          "-t - specifies camera trajectory, stores views at the positions and closes the app\n"
+                          "-f - starting time frame\n"
+                          "-t - specifies camera trajectory, stores views at the positions in the start time frame and closes the app\n"
                           "     trajectory format in normalized (0-1) LF grid coordinates: col_row,col_row,...\n"
                           "     e.g.: -t 0.0_0.0,0.42_0.5,...\n"
                           "Use mouse to change the viewing angle.\n"
@@ -25,7 +26,7 @@ int main(int argc, char **argv)
 
     try
     {
-        Decoder decoder(path);
+        Decoder decoder(path, args["-f"]);
         if(!args["-t"])
             decoder.decodeAndPlay();
         else

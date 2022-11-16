@@ -7,6 +7,9 @@ class VideoDecoder
 {
     public:
     VideoDecoder(std::string file);
+    void seek(size_t time);
+    friend void operator++(VideoDecoder &decoder){decoder.incrementTime();}
+    void decodeFrames(); 
 
     private:
     template <typename T>
@@ -36,6 +39,8 @@ class VideoDecoder
 
     static constexpr int DECODED_COUNT{5};
     static constexpr int DECODER_CALLBACK_SUCCESS{1};
+    size_t decodedNumber{0};
+    size_t time{0};
     std::string input;
     std::unique_ptr<Muxing::Demuxer> demuxer;
     CUvideodecoder decoder{nullptr};
@@ -44,6 +49,8 @@ class VideoDecoder
     void checkGPU();
     void createDecoder();
     void createParser();
+    void decode(Muxing::Demuxer::PacketPointer packetPointer);
+    void incrementTime();
     RingBuffer<DecodedFrame> frames{2};
     cudaVideoChromaFormat chromaFormat{cudaVideoChromaFormat_420};
     cudaVideoCodec getCodec();

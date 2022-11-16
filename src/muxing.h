@@ -16,11 +16,12 @@ public:
         EncodedData() {};
         enum Format { H265=0, AV1=1 };
         void addData(const std::vector<uint8_t> *packetData);
-        void initHeader(glm::uvec2 resolution, glm::uvec2 colsRows, glm::uvec2 reference, uint32_t format);
+        void initHeader(glm::uvec2 resolution, glm::uvec2 colsRows, uint32_t format, uint32_t timeFrameCount);
         std::vector<uint32_t> header;
         std::vector<uint8_t> packets;
         std::vector<uint32_t> offsets;
-        static constexpr size_t HEADER_VALUES_COUNT{7};
+        std::vector<uint32_t> references;
+        static constexpr size_t HEADER_VALUES_COUNT{6};
         glm::uvec2 resolution()
         {
             return {header[0], header[1]};
@@ -29,15 +30,15 @@ public:
         {
             return {header[2], header[3]};
         }
-        glm::uvec2 referencePosition()
-        {
-            return {header[4], header[5]};
-        }
         Format format()
         {
-            return static_cast<Format>(header[6]);
+            return static_cast<Format>(header[4]);
         }
-        size_t frameCount()
+        size_t timeFrameCount()
+        {
+            return header[5];
+        }
+        size_t gridSize()
         {
             return colsRows().x * colsRows().y;
         }
@@ -46,37 +47,39 @@ public:
     class Muxer
     {
     public:
-        Muxer(glm::uvec2 resolution, glm::uvec2 colsRows, glm::uvec2 reference, uint32_t format)
-        {
-            data.initHeader(resolution, colsRows, reference, format);
-        };
         friend void operator<<(Muxer &m, const std::vector<uint8_t> *packet)
         {
             m.addPacket(packet);
         };
         void save(std::string filePath);
+        void init(glm::uvec2 resolution, glm::uvec2 colsRows, uint32_t format, uint32_t timeFrameCount) {data.initHeader(resolution, colsRows, format, timeFrameCount); initialized=true;};
+        bool isInitialized() {return initialized;}
 
     private:
         void addPacket(const std::vector<uint8_t> *packetData);
         EncodedData data;
+        bool initialized{false};
     };
 
     class Demuxer
     {
     public:
-        Demuxer(std::string filePath);
-        friend void operator<<(std::vector<uint8_t> &packet, Demuxer &m)
+        class PacketPointer
         {
-            packet = m.getPacket(m.exportedPacketCount);
-            m.exportedPacketCount++;
+            public:
+            const uint8_t *data;
+            size_t size;
         };
+        Demuxer(std::string filePath);
+        const PacketPointer getPacket(glm::ivec3 colsRowsTime);
+        const PacketPointer getReferencePacket(int time);
         EncodedData data;
 
     private:
-        size_t exportedPacketCount{0};
-        std::vector<uint8_t> getPacket(size_t index);
+        std::vector<uint8_t> copyPacket(glm::ivec3 colsRowsTime);
+        size_t getLinearIndex(glm::ivec3 colsRowsTime);
     };
 
-private:
+    private:
 };
 
