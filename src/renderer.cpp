@@ -5,18 +5,19 @@
 const char *vertexShaderSource = R""""( 
 #version 330 core
 layout (location = 0) in vec3 position;
-layout (location = 1) in vec2 texCoord;
-out vec2 outTexCoord;
+layout (location = 1) in vec2 inTexCoord;
+out vec2 texCoord;
 void main(){
 gl_Position = vec4(position, 1.0);
-outTexCoord = texCoord;})"""";
+texCoord = inTexCoord;})"""";
 
 const char *fragmentShaderSource = R""""(
 #version 330 core
 in vec2 texCoord;
 out vec4 color;
+uniform sampler2D image;
 void main(){
-color =vec4(1.0f, 0.0f, 0.0f, 1.0f);})"""";
+color = texture(image, texCoord);})"""";
 
 Renderer::Renderer()
 {
@@ -78,12 +79,13 @@ void Renderer::loadShaders()
 void Renderer::prepareQuad()
 {
     float vertices[]{
-    1.0f, 1.0f, 0.0f,   1.0f, 1.0f,
-    -1.0f, 1.0f, 0.0f,  0.0f, 1.0f,
-    1.0f,-1.0f, 0.0f,   1.0f, 0.0f,
-    1.0f,-1.0f, 0.0f,   1.0f, 0.0f,
-    -1.0f, 1.0f, 0.0f,  0.0f, 1.0f,
-    -1.0f,-1.0f, 0.0f,  0.0f, 0.0f};
+    -1.0f, 1.0f, 0.0f,   0.0f, 1.0f,
+    1.0f, 1.0f, 0.0f,    1.0f, 1.0f,
+    -1.0f,-1.0f, 0.0f,   0.0f, 0.0f,
+    -1.0f,-1.0f, 0.0f,   0.0f, 0.0f,
+    1.0f,1.0f, 0.0f,     1.0f, 1.0f,
+    1.0f,-1.0f, 0.0f,    1.0f, 0.0f};
+
 
     unsigned int vbo, vao;
     glGenVertexArrays(1, &vao);
@@ -98,6 +100,16 @@ void Renderer::prepareQuad()
     glBindBuffer(GL_ARRAY_BUFFER, 0);  
 }
 
+void Renderer::generateTexture()
+{
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+}
+
 void Renderer::setupGL()
 {
     if (glewInit() != GLEW_OK)
@@ -105,6 +117,7 @@ void Renderer::setupGL()
 
     loadShaders();
     prepareQuad();
+    generateTexture();
 }
 
 void Renderer::init()

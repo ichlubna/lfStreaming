@@ -14,6 +14,7 @@ class Renderer
     private:
     bool prepared{false};
     unsigned int shaderProgram;
+    unsigned int texture;
     glm::uvec2 initialResolution{1280, 720};
     const char *windowName{"Lightfield"};
     glm::vec2 mousePosition;
@@ -21,6 +22,7 @@ class Renderer
     void createWindow();
     void loadShaders();
     void prepareQuad();
+    void generateTexture();
     void setupGL();
     void quit(){prepared=false;};
 };

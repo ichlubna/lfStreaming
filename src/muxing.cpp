@@ -1,4 +1,5 @@
 #include <fstream>
+#include <stdexcept>
 #include <string>
 #include <iostream>
 #include "muxing.h"
@@ -57,15 +58,28 @@ void Muxing::Muxer::addPacket(const std::vector<uint8_t> *packetData)
 Muxing::Demuxer::Demuxer(std::string filePath)
 {
     std::cout << "Loading LF data..." << std::endl;
-    std::ifstream fis(filePath, std::ios::binary);
+    std::ifstream fis(filePath, std::ios::binary | std::ios::ate);
+    size_t fileSize{static_cast<size_t>(fis.tellg())};
+    fis.clear();
+    fis.seekg (0, std::ios::beg);
+
+    if(fileSize < EncodedData::HEADER_VALUES_COUNT)
+        throw std::runtime_error("Input file is empty.");
+
     constexpr size_t BYTE_COUNT{4};
     data.header.resize(EncodedData::HEADER_VALUES_COUNT);
     fis.read(reinterpret_cast<char *>(data.header.data()), BYTE_COUNT*EncodedData::HEADER_VALUES_COUNT);
-
-    data.offsets.resize(data.gridSize());
+    
+    data.offsets.resize(data.gridSize()*data.timeFrameCount());
     fis.read(reinterpret_cast<char *>(data.offsets.data()), data.offsets.size()*BYTE_COUNT);
-    data.packets.resize(data.references.back());
+    data.references.resize(data.offsets.size());
     fis.read(reinterpret_cast<char *>(data.references.data()), data.references.back());
+   
+    std::cerr << fileSize << " " << data.offsets[2];
+    size_t calculatedFileSize{data.gridSize()*BYTE_COUNT*2 + EncodedData::HEADER_VALUES_COUNT*BYTE_COUNT + data.offsets.back()};
+    if(fileSize < calculatedFileSize)
+        throw std::runtime_error("Missing packets data in the input file.");
+
     data.packets.resize(data.offsets.back());
     fis.read(reinterpret_cast<char *>(data.packets.data()), data.offsets.back());
 }
