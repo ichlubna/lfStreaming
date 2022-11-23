@@ -16,6 +16,8 @@ src/renderer.cpp
 src/lfStreamerApp.cpp
 src/videoDecoder.cpp
 src/interpolator.cpp
+src/cudaGLInterop.cu
+src/kernels.cu
 src/libs/loadingBar/loadingbar.hpp
 src/libs/arguments/arguments.hpp
 )

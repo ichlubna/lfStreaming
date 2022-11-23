@@ -10,6 +10,7 @@ class Renderer
     void inputs();
     void setMousePosition(glm::vec2 position){mousePosition=position;};
     bool ready(){return prepared;};
+    unsigned int getTexture(glm::ivec2 resolution);
 
     private:
     bool prepared{false};
@@ -22,7 +23,6 @@ class Renderer
     void createWindow();
     void loadShaders();
     void prepareQuad();
-    void generateTexture();
     void setupGL();
     void quit(){prepared=false;};
 };

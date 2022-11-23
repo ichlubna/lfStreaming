@@ -1,4 +1,5 @@
 #include <GL/glew.h>
+#include <vector>
 #include <stdexcept>
 #include "renderer.h"
 
@@ -57,7 +58,6 @@ void Renderer::createWindow()
             break;
         }
     });
-
 }
 
 void Renderer::loadShaders()
@@ -78,13 +78,13 @@ void Renderer::loadShaders()
 
 void Renderer::prepareQuad()
 {
-    float vertices[]{
-    -1.0f, 1.0f, 0.0f,   0.0f, 1.0f,
-    1.0f, 1.0f, 0.0f,    1.0f, 1.0f,
-    -1.0f,-1.0f, 0.0f,   0.0f, 0.0f,
-    -1.0f,-1.0f, 0.0f,   0.0f, 0.0f,
-    1.0f,1.0f, 0.0f,     1.0f, 1.0f,
-    1.0f,-1.0f, 0.0f,    1.0f, 0.0f};
+    constexpr size_t VERTEX_SIZE{5*sizeof(GLfloat)};
+    constexpr size_t UV_OFFSET{3*sizeof(GLfloat)};
+    
+    std::vector<float> vertices{
+    -1.0f, 3.0f, 0.0f,  0.0f, 2.0f,
+    3.0f, -1.0f, 0.0f,   2.0f, 0.0f,
+    -1.0f,-1.0f, 0.0f,  0.0f, 0.0f};
 
 
     unsigned int vbo, vao;
@@ -92,22 +92,25 @@ void Renderer::prepareQuad()
     glGenBuffers(1, &vbo);
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size()*sizeof(GLfloat), vertices.data(), GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5*sizeof(GLfloat), (char*)0 + 0*sizeof(GLfloat));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEX_SIZE, (char*)0);
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5*sizeof(GLfloat), (char*)0 + 3*sizeof(GLfloat));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEX_SIZE, (char*)0 + UV_OFFSET);
     glBindBuffer(GL_ARRAY_BUFFER, 0);  
 }
 
-void Renderer::generateTexture()
+unsigned int Renderer::getTexture(glm::ivec2 resolution)
 {
+    glDeleteTextures(1, &texture);
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, resolution.x, resolution.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    return texture;
 }
 
 void Renderer::setupGL()
@@ -117,7 +120,6 @@ void Renderer::setupGL()
 
     loadShaders();
     prepareQuad();
-    generateTexture();
 }
 
 void Renderer::init()

@@ -129,6 +129,7 @@ void VideoDecoder::decode(Muxing::Demuxer::PacketPointer packetPointer)
     packet.payload_size = packetPointer.size;
     packet.flags = CUVID_PKT_TIMESTAMP;
     packet.timestamp = decodedNumber;
+    decodedNumber++;
     if (packetPointer.size == 0) 
         packet.flags |= CUVID_PKT_ENDOFSTREAM;
 
@@ -141,4 +142,5 @@ void VideoDecoder::init()
     initContext();
     checkGPU();
     createDecoder();
+    createParser();
 }

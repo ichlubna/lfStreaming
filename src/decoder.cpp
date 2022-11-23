@@ -3,20 +3,10 @@
 #include <fstream>
 #include "decoder.h"
 
-Decoder::Decoder(std::string inputPath, size_t startFrame) : renderer{std::make_unique<Renderer>()}, videoDecoder{std::make_unique<VideoDecoder>(inputPath)} 
+Decoder::Decoder(std::string inputPath, size_t startFrame) : renderer{std::make_unique<Renderer>()}, videoDecoder{std::make_unique<VideoDecoder>(inputPath)}, interop{std::make_unique<CudaGLInterop>()}
 {
-    init();
+    interop->setTexture(renderer->getTexture)
     videoDecoder->seek(startFrame);
-}
-
-void Decoder::init()
-{
-    initCodec();
-}
-
-void Decoder::initCodec()
-{
-
 }
 
 void Decoder::decodeAndPlay()

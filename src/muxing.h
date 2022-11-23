@@ -71,6 +71,7 @@ public:
             size_t size;
         };
         Demuxer(std::string filePath);
+        glm::uvec2 getResolution(){return data.resolution();}
         const PacketPointer getPacket(glm::ivec3 colsRowsTime);
         const PacketPointer getReferencePacket(int time);
         EncodedData data;

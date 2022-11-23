@@ -8,6 +8,7 @@ class VideoDecoder
     public:
     VideoDecoder(std::string file);
     void seek(size_t time);
+    glm::ivec2 getResolution() {demuxer->
     friend void operator++(VideoDecoder &decoder){decoder.incrementTime();}
     void decodeFrames(); 
 
@@ -34,7 +35,7 @@ class VideoDecoder
         CUvideodecoder decoder{nullptr};
         DecodedFrame(CUvideodecoder dec) : decoder{dec}{};
         DecodedFrame(){};
-        ~DecodedFrame(){cuvidUnmapVideoFrame(&decoder, frame);}
+        ~DecodedFrame(){if(frame) cuvidUnmapVideoFrame(&decoder, frame);}
     };
 
     static constexpr int DECODED_COUNT{5};

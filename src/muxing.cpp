@@ -75,7 +75,6 @@ Muxing::Demuxer::Demuxer(std::string filePath)
     data.references.resize(data.offsets.size());
     fis.read(reinterpret_cast<char *>(data.references.data()), data.references.back());
    
-    std::cerr << fileSize << " " << data.offsets[2];
     size_t calculatedFileSize{data.gridSize()*BYTE_COUNT*2 + EncodedData::HEADER_VALUES_COUNT*BYTE_COUNT + data.offsets.back()};
     if(fileSize < calculatedFileSize)
         throw std::runtime_error("Missing packets data in the input file.");

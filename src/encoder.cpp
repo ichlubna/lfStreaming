@@ -43,7 +43,7 @@ void Encoder::encode(std::string inputDir, std::string outputFile, float quality
     auto timeFrameDirs = Muxing::listPath(inputDir);
     timeFrameCount = timeFrameDirs.size();
     for(auto const &dir : timeFrameDirs)
-        encodeTimeFrame(dir, quality, format);
+        encodeTimeFrame(inputDir/dir, quality, format);
     muxer->save(outputFile);
 }
 
