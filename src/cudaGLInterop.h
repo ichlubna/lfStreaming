@@ -1,3 +1,5 @@
+#include <glm/glm.hpp>
+#include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
 
 class CudaGLInterop
@@ -5,12 +7,13 @@ class CudaGLInterop
     public:
     CudaGLInterop(){};
     ~CudaGLInterop();
-    void setTexture(unsigned int inputTexture);
-    
+    void setTexture(GLuint inputTexture, glm::ivec2 textureResolution);
+    void copyData(CUdeviceptr input); 
 
     private:
     bool registered{false};
-    unsigned int texture;
+    GLuint textureGL;
+    glm::ivec2 resolution;
     cudaGraphicsResource_t graphicsResource;
     void unset();
 };

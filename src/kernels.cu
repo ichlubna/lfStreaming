@@ -4,10 +4,7 @@ namespace Conversion
 {
     __device__ bool coordsOutside(int2 coords, int2 resolution)
     {
-        if(coords.x >= resolution.x || coords.y >= resolution.y)
-            return true;
-        else
-            return false;
+        return (coords.x >= resolution.x || coords.y >= resolution.y);
     }
 
     __device__ int2 getImgCoords()
@@ -64,7 +61,7 @@ namespace Conversion
             U = uv.x; 
             V = uv.y; 
         }
-
+/*
         __device__ void storeRGBA(uint8_t *RGBA)
         {
             float ruv = U*RUV.x + V*RUV.y; 
@@ -74,10 +71,10 @@ namespace Conversion
             auto RGBA8Ptr{reinterpret_cast<uchar4*>(RGBA)};
             for(int i=0; i<BLOCK_SIZE; i++)
                 RGBA8Ptr[linearCoordsY[i]] = RGBToRGBA8({Y[i]+ruv, Y[i]+guv, Y[i]+buv});
-        }
+        }*/
     };
 
-    __global__ void NV12ToRGBAKernel(uint8_t *NV12, uint8_t *RGBA, int2 resolution, int2 halfResolution, int pixelCount)
+    __global__ void NV12ToRGBAKernel(uint8_t *NV12, cudaSurfaceObject_t RGBA, int2 resolution, int2 halfResolution, int pixelCount)
     {
         int2 coords = getImgCoords();
         if(coordsOutside(coords, halfResolution))
@@ -87,13 +84,15 @@ namespace Conversion
         NV12Block block;
         block.initCoords(coords, doubleCoords, resolution, halfResolution);
         block.load(NV12, pixelCount);
-        block.storeRGBA(RGBA); 
+        //block.storeRGBA(RGBA); 
+        uchar4 data{255,255,255,255};
+        surf2Dwrite(data, RGBA, doubleCoords.x* sizeof(uchar4), doubleCoords.y);
     }
-
-    void NV12ToRGBA(uint8_t *NV12, uint8_t *RGBA, int2 resolution)
+    
+    void NV12ToRGBA(uint8_t *NV12, cudaSurfaceObject_t RGBA, int2 resolution)
     {
-        constexpr dim3 WG_SIZE{16,16,0};
-        dim3 wgCount{1+resolution.x/WG_SIZE.x/2, 1+resolution.y/WG_SIZE.y/2, 0};
-        NV12ToRGBAKernel<<<wgCount, WG_SIZE>>>(NV12, RGBA, resolution, {resolution.x/2, resolution.y/2}, resolution.x*resolution.y);
+        constexpr dim3 WG_SIZE{16,16,1};
+        dim3 wgCount{1+resolution.x/WG_SIZE.x/2, 1+resolution.y/WG_SIZE.y/2, 1};
+        NV12ToRGBAKernel<<<wgCount, WG_SIZE, 0>>>(NV12, RGBA, resolution, {resolution.x/2, resolution.y/2}, resolution.x*resolution.y);
     }
 }

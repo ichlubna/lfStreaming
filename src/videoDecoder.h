@@ -8,7 +8,7 @@ class VideoDecoder
     public:
     VideoDecoder(std::string file);
     void seek(size_t time);
-    glm::ivec2 getResolution() {demuxer->
+    glm::ivec2 getResolution() {return demuxer->data.resolution();}
     friend void operator++(VideoDecoder &decoder){decoder.incrementTime();}
     void decodeFrames(); 
 

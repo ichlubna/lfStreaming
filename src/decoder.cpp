@@ -5,15 +5,20 @@
 
 Decoder::Decoder(std::string inputPath, size_t startFrame) : renderer{std::make_unique<Renderer>()}, videoDecoder{std::make_unique<VideoDecoder>(inputPath)}, interop{std::make_unique<CudaGLInterop>()}
 {
-    interop->setTexture(renderer->getTexture)
     videoDecoder->seek(startFrame);
 }
 
 void Decoder::decodeAndPlay()
 {
+    auto resolution = videoDecoder->getResolution();
     renderer->init();
+    interop->setTexture(renderer->getTexture(resolution), resolution);
+    CUdeviceptr test;
     while(renderer->ready())
+    {
+        interop->copyData(test);
         renderer->render();
+    }
 }
 
 std::vector<glm::vec2> Decoder::parseTrajectory(std::string textTrajectory) const

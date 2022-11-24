@@ -99,7 +99,6 @@ void Renderer::prepareQuad()
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEX_SIZE, (char*)0 + UV_OFFSET);
     glBindBuffer(GL_ARRAY_BUFFER, 0);  
 }
-
 unsigned int Renderer::getTexture(glm::ivec2 resolution)
 {
     glDeleteTextures(1, &texture);

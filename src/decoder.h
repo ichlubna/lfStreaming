@@ -26,7 +26,7 @@ class Decoder
         Frame topLeft, topRight, bottomLeft, bottomRight;
         float topInter() const {return topRight.weight/(topLeft.weight+topRight.weight);}
         float bottomInter() const {return bottomRight.weight/(bottomLeft.weight+bottomRight.weight);} 
-        glm::vec3 topBottomMiddleInter() const { float top = topInter(); float bottom = bottomInter(); return {top, bottom, bottom/(top+bottom)};};
+        glm::vec3 topBottomMiddleInter() const { float top = topInter(); float bottom = bottomInter(); return {top, bottom, bottom/(top+bottom)};}
     };
 
     std::unique_ptr<Renderer> renderer;
