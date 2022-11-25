@@ -61,17 +61,23 @@ namespace Conversion
             U = uv.x; 
             V = uv.y; 
         }
-/*
-        __device__ void storeRGBA(uint8_t *RGBA)
+
+        __device__ void storeRGBA(cudaSurfaceObject_t RGBA, int2 blockCoords)
         {
             float ruv = U*RUV.x + V*RUV.y; 
             float guv = U*GUV.x + V*GUV.y; 
             float buv = U*BUV.x + V*BUV.y; 
 
-            auto RGBA8Ptr{reinterpret_cast<uchar4*>(RGBA)};
+            //auto RGBA8Ptr{reinterpret_cast<uchar4*>(RGBA)};
+            const int2 offsets[4]{ {0,0}, {0,1}, {1,0}, {1,1} };
             for(int i=0; i<BLOCK_SIZE; i++)
-                RGBA8Ptr[linearCoordsY[i]] = RGBToRGBA8({Y[i]+ruv, Y[i]+guv, Y[i]+buv});
-        }*/
+            {
+                int2 coords{blockCoords.x+offsets[i].x, blockCoords.y+offsets[i].y};
+                uchar4 data = RGBToRGBA8({Y[i]+ruv, Y[i]+guv, Y[i]+buv});
+                surf2Dwrite(data, RGBA, (blockCoords.x+offsets[i].x)*sizeof(uchar4), blockCoords.y+offsets[i].y);
+            }
+                //RGBA8Ptr[linearCoordsY[i]] = RGBToRGBA8({Y[i]+ruv, Y[i]+guv, Y[i]+buv});
+        }
     };
 
     __global__ void NV12ToRGBAKernel(uint8_t *NV12, cudaSurfaceObject_t RGBA, int2 resolution, int2 halfResolution, int pixelCount)
@@ -84,9 +90,7 @@ namespace Conversion
         NV12Block block;
         block.initCoords(coords, doubleCoords, resolution, halfResolution);
         block.load(NV12, pixelCount);
-        //block.storeRGBA(RGBA); 
-        uchar4 data{255,255,255,255};
-        surf2Dwrite(data, RGBA, doubleCoords.x* sizeof(uchar4), doubleCoords.y);
+        block.storeRGBA(RGBA, doubleCoords); 
     }
     
     void NV12ToRGBA(uint8_t *NV12, cudaSurfaceObject_t RGBA, int2 resolution)

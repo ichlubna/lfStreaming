@@ -54,11 +54,14 @@ public:
         void save(std::string filePath);
         void init(glm::uvec2 resolution, glm::uvec2 colsRows, uint32_t format, uint32_t timeFrameCount) {data.initHeader(resolution, colsRows, format, timeFrameCount); initialized=true;};
         bool isInitialized() {return initialized;}
+        void endTimeFrame(glm::uvec2 referenceCoords);
 
     private:
+        size_t getLinearIndex(glm::ivec3 colsRowsTime);
         void addPacket(const std::vector<uint8_t> *packetData);
         EncodedData data;
         bool initialized{false};
+        size_t frameNumber{0};
     };
 
     class Demuxer

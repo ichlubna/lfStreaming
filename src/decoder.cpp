@@ -13,10 +13,13 @@ void Decoder::decodeAndPlay()
     auto resolution = videoDecoder->getResolution();
     renderer->init();
     interop->setTexture(renderer->getTexture(resolution), resolution);
-    CUdeviceptr test;
+    for(int i=0; i<50; i++)
+    videoDecoder->decodeFrame({0,0});
+    auto frames = videoDecoder->getFrames();
+    //return;
+    //interop->copyData(frames.first);
     while(renderer->ready())
     {
-        interop->copyData(test);
         renderer->render();
     }
 }
@@ -102,7 +105,6 @@ void Decoder::storeImage(std::vector<uint8_t> *data, glm::uvec2 resolution, std:
 
 void Decoder::interpolateView(glm::vec2 position)
 {
-
 }
 
 void Decoder::decodeAndStore(std::string trajectory)

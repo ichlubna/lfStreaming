@@ -22,6 +22,18 @@ glm::uvec2 Muxing::parseFilename(std::string name)
     return {stoi(row), stoi(col)};
 }
 
+size_t Muxing::Muxer::getLinearIndex(glm::ivec3 colsRowsTime)
+{
+    return data.gridSize()*colsRowsTime.z + colsRowsTime.y*data.colsRows().x + colsRowsTime.x; 
+}
+
+void Muxing::Muxer::endTimeFrame(glm::uvec2 referenceCoords)
+{
+    unsigned int referenceID = getLinearIndex({referenceCoords, frameNumber});
+    data.references.push_back(referenceID);
+    frameNumber++;
+}
+
 void Muxing::EncodedData::addData(const std::vector<uint8_t> *packetData)
 {
     references.push_back(0);
@@ -35,7 +47,6 @@ void Muxing::EncodedData::initHeader(glm::uvec2 resolution, glm::uvec2 colsRows,
     size_t count{colsRows.x * colsRows.y * timeFrameCount}; 
     offsets.reserve(count);
     references.reserve(count);
-    offsets.push_back(0);
 }
 
 void Muxing::Muxer::save(std::string filePath)

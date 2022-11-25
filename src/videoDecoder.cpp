@@ -3,6 +3,8 @@
 #include <memory>
 #include "videoDecoder.h"
 
+#include <stdexcept>
+
 VideoDecoder::VideoDecoder(std::string file) : demuxer{std::make_unique<Muxing::Demuxer>(file)}
 {
     init();
@@ -84,7 +86,8 @@ int VideoDecoder::videoSequence(CUVIDEOFORMAT *format)
 
 int VideoDecoder::decodePicture(CUVIDPICPARAMS *picParams)
 {
-    cuvidDecodePicture(decoder, picParams);
+    if(cuvidDecodePicture(decoder, picParams) != CUDA_SUCCESS)
+        throw std::runtime_error("Cannot decode picture.");
     return DECODER_CALLBACK_SUCCESS;
 }
  
@@ -96,8 +99,9 @@ int VideoDecoder::displayPicture(CUVIDPARSERDISPINFO *dispInfo)
     videoProcessingParameters.top_field_first = dispInfo->top_field_first;
     videoProcessingParameters.unpaired_field = dispInfo->createParserpeat_first_field < 0;*/
     videoProcessingParameters.output_stream = 0;
-
+    
     DecodedFrame frame(decoder);
+    frame.index = dispInfo->picture_index;
     cuvidMapVideoFrame(decoder, dispInfo->picture_index, &(frame.frame),  &(frame.pitch), &videoProcessingParameters);
     CUVIDGETDECODESTATUS status{};
     if(cuvidGetDecodeStatus(decoder, dispInfo->picture_index, &status) != CUDA_SUCCESS)
@@ -122,6 +126,17 @@ void VideoDecoder::seek(size_t newTime)
     decode(demuxer->getReferencePacket(time));
 }
 
+void VideoDecoder::decodeFrame(glm::ivec2 position)
+{
+    auto packet = demuxer->getPacket({position, time});
+    decode(packet);
+}
+
+VideoDecoder::FramePair VideoDecoder::getFrames()
+{
+    return{frames[0].frame, frames[1].frame};
+}
+
 void VideoDecoder::decode(Muxing::Demuxer::PacketPointer packetPointer)
 {
     CUVIDSOURCEDATAPACKET packet{};
@@ -132,7 +147,7 @@ void VideoDecoder::decode(Muxing::Demuxer::PacketPointer packetPointer)
     decodedNumber++;
     if (packetPointer.size == 0) 
         packet.flags |= CUVID_PKT_ENDOFSTREAM;
-
+    
     if(cuvidParseVideoData(parser, &packet) != CUDA_SUCCESS)
         throw std::runtime_error("Cannot parse packet.");
 }

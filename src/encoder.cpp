@@ -82,6 +82,7 @@ void Encoder::encodeTimeFrame(std::string inputDir, float quality, std::string f
             bar.add();
             *muxer << newFrame.getFramePacket();
         }
+    muxer->endTimeFrame(referenceCoords);
     bar.add();
 }
 

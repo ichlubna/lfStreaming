@@ -3,14 +3,19 @@
 #include <nvidia-sdk/nvcuvid.h>
 #include "muxing.h"
 
+
+#include <iostream>
+
 class VideoDecoder
 {
     public:
+    using FramePair = std::pair<CUdeviceptr, CUdeviceptr>;
     VideoDecoder(std::string file);
     void seek(size_t time);
     glm::ivec2 getResolution() {return demuxer->data.resolution();}
     friend void operator++(VideoDecoder &decoder){decoder.incrementTime();}
-    void decodeFrames(); 
+    void decodeFrame(glm::ivec2 position);
+    FramePair getFrames();
 
     private:
     template <typename T>
@@ -32,6 +37,7 @@ class VideoDecoder
         public:
         CUdeviceptr frame{0};
         unsigned int pitch{0};
+        size_t index{0};
         CUvideodecoder decoder{nullptr};
         DecodedFrame(CUvideodecoder dec) : decoder{dec}{};
         DecodedFrame(){};
