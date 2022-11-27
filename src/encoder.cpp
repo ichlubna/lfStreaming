@@ -37,9 +37,19 @@ Encoder::StreamFormat Encoder::stringToFormat(std::string format) const
         throw std::runtime_error("The specified video stream format is not supported.");
 }
 
+void Encoder::checkDir(std::string path)
+{
+    if(!std::filesystem::exists(path))
+        throw std::runtime_error("The path "+path+" does not exist!");
+    if(!std::filesystem::is_directory(path))
+        throw std::runtime_error("The path "+path+" does not lead to a directory!");
+    if(std::filesystem::is_empty(path))
+        throw std::runtime_error("The directory "+path+" is empty!");
+}
 
 void Encoder::encode(std::string inputDir, std::string outputFile, float quality, std::string format)
 {
+    checkDir(inputDir);
     auto timeFrameDirs = Muxing::listPath(inputDir);
     timeFrameCount = timeFrameDirs.size();
     for(auto const &dir : timeFrameDirs)
@@ -49,6 +59,7 @@ void Encoder::encode(std::string inputDir, std::string outputFile, float quality
 
 void Encoder::encodeTimeFrame(std::string inputDir, float quality, std::string format)
 {
+    checkDir(inputDir);
     auto files = Muxing::listPath(inputDir);
     auto lastFileCoords = Muxing::parseFilename(*files.rbegin()) + glm::uvec2(1);
     auto colsRows = lastFileCoords;

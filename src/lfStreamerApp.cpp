@@ -1,11 +1,19 @@
 #include "decoder.h"
 #include "libs/arguments/arguments.hpp"
 
+void checkPath(std::string path)
+{
+    if(!std::filesystem::exists(path))
+        throw std::runtime_error("The path "+path+" does not exist!");
+    if(std::filesystem::is_directory(path))
+        throw std::runtime_error("The path "+path+" does not lead to a file!");
+}
+
 int main(int argc, char **argv)
 {
     Arguments args(argc, argv);
     std::string path = static_cast<std::string>(args["-i"]);
-
+    
     std::string helpText{ "Usage:\n"
                           "Example: lfStreamer -i /MyAmazingMachine/LFVideo.lf\n"
                           "-i - encoded LF file\n"
@@ -26,6 +34,7 @@ int main(int argc, char **argv)
 
     try
     {
+        checkPath(path);
         Decoder decoder(path, args["-f"]);
         if(!args["-t"])
             decoder.decodeAndPlay();

@@ -1,6 +1,6 @@
 [submodule "src/libs/arguments"]
 	path = src/libs/arguments
-	url = git@github.com:ichlubna/arguments.git
+	url = https://github.com/ichlubna/arguments.git
 [submodule "src/libs/loadingBar"]
 	path = src/libs/loadingBar
-	url = git@github.com:ichlubna/loadingBar.git
+	url = https://github.com/ichlubna/loadingBar.git

@@ -112,5 +112,6 @@ private:
     size_t timeFrameCount{0};
     StreamFormat stringToFormat(std::string) const;
     void encodeTimeFrame(std::string inputDir, float quality, std::string format);
+    void checkDir(std::string path);
     std::unique_ptr<Muxing::Muxer> muxer;
 };
