@@ -85,7 +85,7 @@ int VideoDecoder::videoSequence(CUVIDEOFORMAT *format)
 } 
 
 int VideoDecoder::decodePicture(CUVIDPICPARAMS *picParams)
-{
+{   
     if(cuvidDecodePicture(decoder, picParams) != CUDA_SUCCESS)
         throw std::runtime_error("Cannot decode picture.");
     return DECODER_CALLBACK_SUCCESS;
@@ -147,7 +147,6 @@ void VideoDecoder::decode(Muxing::Demuxer::PacketPointer packetPointer)
     decodedNumber++;
     if (packetPointer.size == 0) 
         packet.flags |= CUVID_PKT_ENDOFSTREAM;
-    
     if(cuvidParseVideoData(parser, &packet) != CUDA_SUCCESS)
         throw std::runtime_error("Cannot parse packet.");
 }
@@ -158,4 +157,10 @@ void VideoDecoder::init()
     checkGPU();
     createDecoder();
     createParser();
+}
+
+VideoDecoder::~VideoDecoder()
+{
+    cuvidDestroyVideoParser(parser);
+    cuvidDestroyDecoder(decoder);
 }

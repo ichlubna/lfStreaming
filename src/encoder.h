@@ -13,7 +13,7 @@ class Encoder
 {
 public:
     Encoder() : muxer{std::make_unique<Muxing::Muxer>()} {};
-    void encode(std::string inputDir, std::string outputFile, float quality, std::string format);
+    void encode(std::string inputDir, std::string outputFile, float quality, std::string format, glm::ivec2 keyCoords, int keyInterval);
     const std::vector<uint8_t> extractPacketData(AVPacket *packet) const;
     static const AVPixelFormat outputPixelFormat{AV_PIX_FMT_YUV444P};
     enum StreamFormat { H265 = 0, AV1 = 1 };

@@ -12,6 +12,9 @@ int main(int argc, char **argv)
     std::string format = static_cast<std::string>(args["-f"]);
     std::string outputFile = static_cast<std::string>(args["-o"]);
 
+    glm::ivec2 keyCoords{-1,-1};
+    int keyInterval{-1};
+    
     std::string helpText{ "Usage:\n"
                           "Example: lfEncoder -i /MyAmazingMachine/thoseImages -q 1.0 -f H265 -o ./coolFile.lf\n"
                           "-i - directory with subdirectiories of lf grid images\n"
@@ -21,6 +24,9 @@ int main(int argc, char **argv)
                           "-- higher value mean better quality but larger file\n"
                           "-f - format of the video stream: H265, AV1\n"
                           "-o - output file\n"
+                          "The automatic keyframe detection is not used if the arguments below are specified.\n"
+                          "-g - GOP size - interval of keyframes in time frames\n"
+                          "-k - coordinates of reference frame in the grid, e.g.: 0_0\n"
                         };
     if(args.printHelpIfPresent(helpText))
         return 0;
@@ -38,8 +44,13 @@ int main(int argc, char **argv)
 
     try
     {
+        if(args["-k"])
+            keyCoords = static_cast<glm::ivec2>(Muxing::parseFilename(args["-k"]));
+        if(args["-g"])
+            keyInterval = args["g"];
+
         Encoder encoder;
-        encoder.encode(path, outputFile, quality, format);
+        encoder.encode(path, outputFile, quality, format, keyCoords, keyInterval);
     }
     catch(const std::exception &e)
     {

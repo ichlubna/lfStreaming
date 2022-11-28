@@ -15,7 +15,9 @@ const std::set<std::filesystem::path> Muxing::listPath(std::string path)
 
 glm::uvec2 Muxing::parseFilename(std::string name)
 {
-    int delimiterPos = name.find('_');
+    auto delimiterPos = name.find('_');
+    if(delimiterPos == std::string::npos)
+        throw std::runtime_error("Missing delimiter in "+name+" as column_row!");
     int extensionPos = name.find('.');
     auto row = name.substr(0, delimiterPos);
     auto col = name.substr(delimiterPos + 1, extensionPos - delimiterPos - 1);

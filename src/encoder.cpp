@@ -47,8 +47,10 @@ void Encoder::checkDir(std::string path)
         throw std::runtime_error("The directory "+path+" is empty!");
 }
 
-void Encoder::encode(std::string inputDir, std::string outputFile, float quality, std::string format)
+void Encoder::encode(std::string inputDir, std::string outputFile, float quality, std::string format, glm::ivec2 keyCoords, int keyInterval)
 {
+    if(keyCoords.x + keyInterval >= 0)
+        throw std::runtime_error("Not implemented yet.");
     checkDir(inputDir);
     auto timeFrameDirs = Muxing::listPath(inputDir);
     timeFrameCount = timeFrameDirs.size();

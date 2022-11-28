@@ -11,6 +11,7 @@ class VideoDecoder
     public:
     using FramePair = std::pair<CUdeviceptr, CUdeviceptr>;
     VideoDecoder(std::string file);
+    ~VideoDecoder();
     void seek(size_t time);
     glm::ivec2 getResolution() {return demuxer->data.resolution();}
     friend void operator++(VideoDecoder &decoder){decoder.incrementTime();}

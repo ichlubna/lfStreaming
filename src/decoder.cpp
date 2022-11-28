@@ -110,4 +110,6 @@ void Decoder::interpolateView(glm::vec2 position)
 void Decoder::decodeAndStore(std::string trajectory)
 {
     auto positions = parseTrajectory(trajectory);
+    videoDecoder->decodeFrame({1,1});
+    auto frames = videoDecoder->getFrames();
 }
