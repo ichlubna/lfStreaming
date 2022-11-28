@@ -81,6 +81,7 @@ void VideoDecoder::createParser()
 
 int VideoDecoder::videoSequence(CUVIDEOFORMAT *format)
 {
+    //std::cerr << "aaa";
     return DECODER_CALLBACK_SUCCESS;
 } 
 
@@ -93,6 +94,7 @@ int VideoDecoder::decodePicture(CUVIDPICPARAMS *picParams)
  
 int VideoDecoder::displayPicture(CUVIDPARSERDISPINFO *dispInfo)
 {
+    //std::cerr << "aaa";
     CUVIDPROCPARAMS videoProcessingParameters{};
     videoProcessingParameters.progressive_frame = dispInfo->progressive_frame;
     /*deoProcessingParameters.second_field = dispInfo->repeat_first_field + 1;
