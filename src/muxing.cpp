@@ -58,7 +58,7 @@ void Muxing::Muxer::save(std::string filePath)
     fos.write(reinterpret_cast<const char *>(data.header.data()), data.header.size()*BYTE_COUNT);
     fos.write(reinterpret_cast<const char *>(data.offsets.data()), data.offsets.size()*BYTE_COUNT);
     fos.write(reinterpret_cast<const char *>(data.references.data()), data.references.size()*BYTE_COUNT);
-    fos.write(reinterpret_cast<const char *>(data.packets.data()), data.packets.size()*BYTE_COUNT);
+    fos.write(reinterpret_cast<const char *>(data.packets.data()), data.packets.size());
     //std::cerr << data.header.size() << " " << data.offsets.size() << " " << data.references.size() << " " << data.packets.size() << std::endl;
     fos.close();
 }
@@ -86,9 +86,9 @@ Muxing::Demuxer::Demuxer(std::string filePath)
     data.offsets.resize(1+data.gridSize()*data.timeFrameCount());
     fis.read(reinterpret_cast<char *>(data.offsets.data()), data.offsets.size()*BYTE_COUNT);
     data.references.resize(data.timeFrameCount());
-    fis.read(reinterpret_cast<char *>(data.references.data()), data.references.size());
+    fis.read(reinterpret_cast<char *>(data.references.data()), data.references.size()*BYTE_COUNT);
    
-    size_t calculatedFileSize{data.gridSize()*BYTE_COUNT*2 + EncodedData::HEADER_VALUES_COUNT*BYTE_COUNT + data.offsets.back()};
+    size_t calculatedFileSize{BYTE_COUNT*(data.gridSize() + data.timeFrameCount() + EncodedData::HEADER_VALUES_COUNT) + data.offsets.back()};
     if(fileSize < calculatedFileSize)
         throw std::runtime_error("Missing packets data in the input file.");
 
