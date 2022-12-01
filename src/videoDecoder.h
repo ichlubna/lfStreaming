@@ -9,13 +9,19 @@
 class VideoDecoder
 {
     public:
-    using FramePair = std::pair<CUdeviceptr, CUdeviceptr>;
     VideoDecoder(std::string file);
     ~VideoDecoder();
     void seek(size_t time);
     glm::ivec2 getResolution() {return demuxer->data.resolution();}
     friend void operator++(VideoDecoder &decoder){decoder.incrementTime();}
     void decodeFrame(glm::ivec2 position);
+    class FramePair
+    {
+        public:
+        CUdeviceptr frames[2]{0,0};
+        int pitch{0};
+        CUdeviceptr operator[](int index){return frames[index];}
+    };
     FramePair getFrames();
 
     private:
@@ -24,13 +30,13 @@ class VideoDecoder
     {
         public:
         RingBuffer(size_t size) : data{std::vector<T>(size)}{}
-        friend void operator<<(RingBuffer &buffer, T& element){buffer.addElement(element);}
+        T* add(T element) {data[end]=element; T* top = &data[end]; end++; end%=data.size(); return top;}; 
         T operator[](int index){return data[index];}
+        void clear() {data.clear();}
         
         private:
         size_t end{0};
         std::vector<T> data;
-        void addElement(T element) {data[end]=element; end++; end%=data.size();}; 
     };
 
     class DecodedFrame
@@ -42,10 +48,10 @@ class VideoDecoder
         CUvideodecoder decoder{nullptr};
         DecodedFrame(CUvideodecoder dec) : decoder{dec}{};
         DecodedFrame(){};
-        ~DecodedFrame(){if(frame) cuvidUnmapVideoFrame(&decoder, frame);}
+        ~DecodedFrame(){if(frame) cuvidUnmapVideoFrame(decoder, frame);}
     };
 
-    static constexpr int DECODED_COUNT{5};
+    static constexpr int DECODED_COUNT{8};
     static constexpr int DECODER_CALLBACK_SUCCESS{1};
     size_t decodedNumber{0};
     size_t time{0};

@@ -8,7 +8,7 @@ class CudaGLInterop
     CudaGLInterop(){};
     ~CudaGLInterop();
     void setTexture(GLuint inputTexture, glm::ivec2 textureResolution);
-    void copyData(CUdeviceptr input); 
+    void copyData(CUdeviceptr input, int pitch); 
 
     private:
     bool registered{false};

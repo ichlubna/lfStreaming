@@ -78,14 +78,13 @@ void VideoDecoder::createParser()
         throw std::runtime_error("Cannot create the parser.");
 }
 
-
 int VideoDecoder::videoSequence(CUVIDEOFORMAT *format)
 {
     return DECODER_CALLBACK_SUCCESS;
 } 
 
 int VideoDecoder::decodePicture(CUVIDPICPARAMS *picParams)
-{   
+{  
     if(cuvidDecodePicture(decoder, picParams) != CUDA_SUCCESS)
         throw std::runtime_error("Cannot decode picture.");
     return DECODER_CALLBACK_SUCCESS;
@@ -95,20 +94,20 @@ int VideoDecoder::displayPicture(CUVIDPARSERDISPINFO *dispInfo)
 {
     CUVIDPROCPARAMS videoProcessingParameters{};
     videoProcessingParameters.progressive_frame = dispInfo->progressive_frame;
-    /*deoProcessingParameters.second_field = dispInfo->repeat_first_field + 1;
+    videoProcessingParameters.second_field = dispInfo->repeat_first_field + 1;
     videoProcessingParameters.top_field_first = dispInfo->top_field_first;
-    videoProcessingParameters.unpaired_field = dispInfo->createParserpeat_first_field < 0;*/
+    videoProcessingParameters.unpaired_field = dispInfo->repeat_first_field < 0;
     videoProcessingParameters.output_stream = 0;
     
-    DecodedFrame frame(decoder);
-    frame.index = dispInfo->picture_index;
-    cuvidMapVideoFrame(decoder, dispInfo->picture_index, &(frame.frame),  &(frame.pitch), &videoProcessingParameters);
     CUVIDGETDECODESTATUS status{};
     if(cuvidGetDecodeStatus(decoder, dispInfo->picture_index, &status) != CUDA_SUCCESS)
         throw std::runtime_error("Cannot check decoding status.");
     if (status.decodeStatus == cuvidDecodeStatus_Error || status.decodeStatus == cuvidDecodeStatus_Error_Concealed)
         throw std::runtime_error("Cannot get decoded frame.");
-    frames << frame;
+    
+    auto frame = frames.add(DecodedFrame(decoder));
+    frame->index = dispInfo->picture_index;
+    cuvidMapVideoFrame(decoder, dispInfo->picture_index, &(frame->frame),  &(frame->pitch), &videoProcessingParameters);
     return DECODER_CALLBACK_SUCCESS;
 } 
 
@@ -134,7 +133,7 @@ void VideoDecoder::decodeFrame(glm::ivec2 position)
 
 VideoDecoder::FramePair VideoDecoder::getFrames()
 {
-    return{frames[0].frame, frames[1].frame};
+    return{frames[0].frame, frames[1].frame, frames[0].pitch};
 }
 
 void VideoDecoder::decode(Muxing::Demuxer::PacketPointer packetPointer)
@@ -161,6 +160,7 @@ void VideoDecoder::init()
 
 VideoDecoder::~VideoDecoder()
 {
+    frames.clear();
     cuvidDestroyVideoParser(parser);
     cuvidDestroyDecoder(decoder);
 }

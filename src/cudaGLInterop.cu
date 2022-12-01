@@ -24,7 +24,7 @@ void CudaGLInterop::setTexture(GLuint inputTexture, glm::ivec2 textureResolution
         throw std::runtime_error("Cannot register graphics resource.");
 }
 
-void CudaGLInterop::copyData(CUdeviceptr input)
+void CudaGLInterop::copyData(CUdeviceptr input, int pitch)
 {
     cudaGraphicsMapResources(1, &graphicsResource);
     cudaArray_t output;
@@ -34,7 +34,7 @@ void CudaGLInterop::copyData(CUdeviceptr input)
     resourceDesc.res.array.array = output;
     cudaSurfaceObject_t surface;
     cudaCreateSurfaceObject(&surface, &resourceDesc); 
-    Conversion::NV12ToRGBA(reinterpret_cast<uint8_t*>(input), surface, {resolution.x, resolution.y});
+    Conversion::NV12ToRGBA(reinterpret_cast<uint8_t*>(input), surface, {resolution.x, resolution.y}, pitch);
     cudaDestroySurfaceObject(surface);
     cudaGraphicsUnmapResources(1, &graphicsResource);
     cudaStreamSynchronize(0); 

@@ -85,7 +85,11 @@ void Renderer::prepareQuad()
     -1.0f, 3.0f, 0.0f,  0.0f, 2.0f,
     3.0f, -1.0f, 0.0f,   2.0f, 0.0f,
     -1.0f,-1.0f, 0.0f,  0.0f, 0.0f};
-
+    //Y flipped
+    /*std::vector<float> vertices{
+    -1.0f, 1.0f, 0.0f,  0.0f, 0.0f,
+    3.0f, 1.0f, 0.0f,   2.0f, 0.0f,
+    -1.0f, -3.0f, 0.0f,  0.0f, 2.0f};*/
 
     unsigned int vbo, vao;
     glGenVertexArrays(1, &vao);
