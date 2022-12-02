@@ -2,6 +2,8 @@
 
 namespace Conversion
 {
+    constexpr bool FLOAT_YUV_CONVERSION{false};
+
     __device__ bool coordsOutside(int2 coords, int2 resolution)
     {
         return (coords.x >= resolution.x || coords.y >= resolution.y);
@@ -25,16 +27,18 @@ namespace Conversion
     {
         public:
         static constexpr int BLOCK_SIZE{4};
-        static constexpr float2 RUV{0, 1.13983};
-        static constexpr float2 GUV{-0.39465, -0.58060};
-        static constexpr float2 BUV{2.03211, 0};
+        //source: https://learn.microsoft.com/en-us/windows/win32/medfound/recommended-8-bit-yuv-formats-for-video-rendering
+        static constexpr float4 yuvCoefsFloat{1.596027, -0.391762, -0.812968, 2.017232};
+        static constexpr float yuvCommonCoefFloat{1.164383};
+        static constexpr int4 yuvCoefsInt{409, -100, -208, 516};
+        static constexpr int yuvCommonCoefInt{298};
         int linearCoordsY[4];
         int linearCoordsUV;
-        float Y[BLOCK_SIZE];
-        float U;
-        float V;
+        int Y[BLOCK_SIZE];
+        int U;
+        int V;
         
-        __device__ uchar4 RGBToRGBA8(float3 RGB)
+        __device__ uchar4 RGBToRGBA8(int3 RGB)
         {
             return{ static_cast<unsigned char>(RGB.x),
                     static_cast<unsigned char>(RGB.y),
@@ -50,8 +54,7 @@ namespace Conversion
             linear = linearCoords({doubleCoords.x, doubleCoords.y+1}, {pitch,resolution.y});
             linearCoordsY[2] = linear;
             linearCoordsY[3] = linear+1;
-            linearCoordsUV = linearCoords({doubleCoords.x, coords.y+1}, {pitch,resolution.y});
-            //linearCoordsUV = linearCoords({coords.x, coords.y}, {pitch, halfResolution.y});
+            linearCoordsUV = linearCoords({doubleCoords.x, coords.y}, {pitch,resolution.y});
         }
 
         __device__ void load(uint8_t *NV12, int pixelCount)
@@ -61,21 +64,58 @@ namespace Conversion
             auto UVplane = NV12+pixelCount;
             U = UVplane[linearCoordsUV];
             V = UVplane[linearCoordsUV+1];
-
+        }
+   
+        __device__ int clamp8Bit(float value)
+        {
+            if(value > 255)
+                return 255;
+            if(value < 0)
+                return 0;
+            return value;
+        }
+ 
+        __device__ int3 YRuvGuvBuvToRGB(float Y, float Ruv, float Guv, float Buv)
+        {
+            int R = clamp8Bit(round(Y + Ruv));
+            int G = clamp8Bit(round(Y + Guv));
+            int B = clamp8Bit(round(Y + Buv));
+            return {R, G, B};
+        }
+        
+        __device__ int3 YRuvGuvBuvToRGB(int Y, int Ruv, int Guv, int Buv)
+        {
+            int R = clamp8Bit((Y + Ruv + 128) >> 8);
+            int G = clamp8Bit((Y + Guv + 128) >> 8);
+            int B = clamp8Bit((Y + Buv + 128) >> 8);
+            return {R, G, B};
         }
 
+        template <typename T>
         __device__ void storeRGBA(cudaSurfaceObject_t RGBA, int2 blockCoords)
         {
-            float ruv = U*RUV.x + V*RUV.y; 
-            float guv = U*GUV.x + V*GUV.y; 
-            float buv = U*BUV.x + V*BUV.y; 
+            int UN = U-128;
+            int VN = V-128;
+            T ruv, buv, guv, coef;
+            if constexpr (std::is_same<T, float>::value)
+            {
+                ruv = VN*yuvCoefsFloat.x; 
+                buv = UN*yuvCoefsFloat.y + VN*yuvCoefsFloat.z; 
+                guv = UN*yuvCoefsFloat.w;
+                coef = yuvCommonCoefFloat;
+            }
+            else if constexpr (std::is_same<T, int>::value)
+            {
+                ruv = VN*yuvCoefsInt.x;
+                buv = UN*yuvCoefsInt.y + VN*yuvCoefsInt.z;
+                guv = UN*yuvCoefsInt.w;
+                coef = yuvCommonCoefInt;
+            }
 
             const int2 offsets[4]{ {0,0}, {0,1}, {1,0}, {1,1} };
             for(int i=0; i<BLOCK_SIZE; i++)
             {
-                int2 coords{blockCoords.x+offsets[i].x, blockCoords.y+offsets[i].y};
-                uchar4 data = RGBToRGBA8({Y[i]+ruv, Y[i]+guv, Y[i]+buv});
-                //data = RGBToRGBA8({Y[i], Y[i], Y[i]});
+                uchar4 data = RGBToRGBA8(YRuvGuvBuvToRGB((Y[i]-16)*coef, ruv, buv, guv));
                 surf2Dwrite(data, RGBA, (blockCoords.x+offsets[i].x)*sizeof(uchar4), blockCoords.y+offsets[i].y, cudaBoundaryModeClamp);
             }
         }
@@ -91,7 +131,10 @@ namespace Conversion
         NV12Block block;
         block.initCoords(coords, doubleCoords, resolution, halfResolution, pitch);
         block.load(NV12, pixelCount);
-        block.storeRGBA(RGBA, {doubleCoords.x, resolution.y-1-doubleCoords.y}); 
+        if constexpr (FLOAT_YUV_CONVERSION)
+            block.storeRGBA<float>(RGBA, {doubleCoords.x, resolution.y-1-doubleCoords.y}); 
+        else
+            block.storeRGBA<int>(RGBA, {doubleCoords.x, resolution.y-1-doubleCoords.y}); 
     }
     
     void NV12ToRGBA(uint8_t *NV12, cudaSurfaceObject_t RGBA, int2 resolution, int pitch)
