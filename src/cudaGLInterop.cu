@@ -1,6 +1,6 @@
 #include <stdexcept>
 #include "cudaGLInterop.h"
-#include "kernels.cu"
+#include "kernels.h"
 
 CudaGLInterop::~CudaGLInterop()
 {

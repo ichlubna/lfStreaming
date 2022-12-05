@@ -15,44 +15,24 @@ class VideoDecoder
     glm::ivec2 getResolution() {return demuxer->data.resolution();}
     friend void operator++(VideoDecoder &decoder){decoder.incrementTime();}
     void decodeFrame(glm::ivec2 position);
-    class FramePair
-    {
-        public:
-        CUdeviceptr frames[2]{0,0};
-        int pitch{0};
-        CUdeviceptr operator[](int index){return frames[index];}
-    };
-    FramePair getFrames();
-
-    private:
-    template <typename T>
-    class RingBuffer
-    {
-        public:
-        RingBuffer(size_t size) : data{std::vector<T>(size)}{}
-        T* add(T element) {data[end]=element; T* top = &data[end]; end++; end%=data.size(); return top;}; 
-        T operator[](int index){return data[index];}
-        void clear() {data.clear();}
-        
-        private:
-        size_t end{0};
-        std::vector<T> data;
-    };
-
+    void flush();
+    bool allFramesReady();
     class DecodedFrame
     {
         public:
         CUdeviceptr frame{0};
         unsigned int pitch{0};
-        size_t index{0};
         CUvideodecoder decoder{nullptr};
         DecodedFrame(CUvideodecoder dec) : decoder{dec}{};
         DecodedFrame(){};
         ~DecodedFrame(){if(frame) cuvidUnmapVideoFrame(decoder, frame);}
     };
+    const std::vector<DecodedFrame>* getFrames() const {return &frames;};
 
+    private:
     static constexpr int DECODED_COUNT{8};
     static constexpr int DECODER_CALLBACK_SUCCESS{1};
+    static constexpr int FRAME_COUNT{4};
     size_t decodedNumber{0};
     size_t time{0};
     std::string input;
@@ -65,7 +45,8 @@ class VideoDecoder
     void createParser();
     void decode(Muxing::Demuxer::PacketPointer packetPointer);
     void incrementTime();
-    RingBuffer<DecodedFrame> frames{2};
+    void prepareFrame(int timestamp, int pictureID, CUVIDPROCPARAMS params);
+    std::vector<DecodedFrame>frames{FRAME_COUNT};
     cudaVideoChromaFormat chromaFormat{cudaVideoChromaFormat_420};
     cudaVideoCodec getCodec();
     int videoSequence(CUVIDEOFORMAT *format); 

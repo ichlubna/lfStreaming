@@ -89,6 +89,13 @@ int VideoDecoder::decodePicture(CUVIDPICPARAMS *picParams)
         throw std::runtime_error("Cannot decode picture.");
     return DECODER_CALLBACK_SUCCESS;
 }
+
+void VideoDecoder::prepareFrame(int timestamp, int pictureID, CUVIDPROCPARAMS params)
+{
+    int finalID = timestamp % FRAME_COUNT;
+    frames[finalID] = DecodedFrame(decoder);
+    cuvidMapVideoFrame(decoder, pictureID, &(frames[finalID].frame),  &(frames[finalID].pitch), &params);
+}
  
 int VideoDecoder::displayPicture(CUVIDPARSERDISPINFO *dispInfo)
 {
@@ -98,18 +105,24 @@ int VideoDecoder::displayPicture(CUVIDPARSERDISPINFO *dispInfo)
     videoProcessingParameters.top_field_first = dispInfo->top_field_first;
     videoProcessingParameters.unpaired_field = dispInfo->repeat_first_field < 0;
     videoProcessingParameters.output_stream = 0;
-    
     CUVIDGETDECODESTATUS status{};
     if(cuvidGetDecodeStatus(decoder, dispInfo->picture_index, &status) != CUDA_SUCCESS)
         throw std::runtime_error("Cannot check decoding status.");
     if (status.decodeStatus == cuvidDecodeStatus_Error || status.decodeStatus == cuvidDecodeStatus_Error_Concealed)
         throw std::runtime_error("Cannot get decoded frame.");
-    
-    auto frame = frames.add(DecodedFrame(decoder));
-    frame->index = dispInfo->picture_index;
-    cuvidMapVideoFrame(decoder, dispInfo->picture_index, &(frame->frame),  &(frame->pitch), &videoProcessingParameters);
+  
+     
+    prepareFrame(dispInfo->timestamp, dispInfo->picture_index, videoProcessingParameters); 
     return DECODER_CALLBACK_SUCCESS;
 } 
+
+bool VideoDecoder::allFramesReady()
+{
+    bool ready{true};
+    for(auto const &frame : frames)
+        ready = ready && (frame.frame != 0);
+    return ready;
+}
 
 void VideoDecoder::incrementTime()
 {
@@ -131,9 +144,9 @@ void VideoDecoder::decodeFrame(glm::ivec2 position)
     decode(packet);
 }
 
-VideoDecoder::FramePair VideoDecoder::getFrames()
+void VideoDecoder::flush()
 {
-    return{frames[0].frame, frames[1].frame, frames[0].pitch};
+    decode({nullptr,0});
 }
 
 void VideoDecoder::decode(Muxing::Demuxer::PacketPointer packetPointer)

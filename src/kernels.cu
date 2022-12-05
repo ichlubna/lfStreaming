@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "kernels.h"
 
 namespace Conversion
 {

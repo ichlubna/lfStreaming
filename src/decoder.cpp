@@ -1,7 +1,8 @@
 #include <sstream>
 #include <stdexcept>
-#include <fstream>
+#include <string>
 #include "decoder.h"
+#include "exporter.h"
 
 Decoder::Decoder(std::string inputPath, size_t startFrame) : renderer{std::make_unique<Renderer>()}, videoDecoder{std::make_unique<VideoDecoder>(inputPath)}, interop{std::make_unique<CudaGLInterop>()}
 {
@@ -17,11 +18,8 @@ void Decoder::decodeAndPlay()
     videoDecoder->decodeFrame({0,0});
     videoDecoder->decodeFrame({0,0});
     videoDecoder->decodeFrame({0,0});
-    videoDecoder->decodeFrame({0,0});
-    videoDecoder->decodeFrame({0,0});
-    videoDecoder->decodeFrame({0,0});
     auto frames = videoDecoder->getFrames();
-    interop->copyData(frames[0], frames.pitch);
+    interop->copyData((*frames)[0].frame, (*frames)[0].pitch);
     while(renderer->ready())
     {
         renderer->render();
@@ -84,29 +82,6 @@ Decoder::SelectedFrames Decoder::pickFromGrid(glm::uvec2 gridSize, glm::vec2 pos
     return frames;
 }
 
-void Decoder::storeImage(std::vector<uint8_t> *data, glm::uvec2 resolution, std::string path)
-{
-  	std::ofstream fs(path, std::ios::out | std::ios::binary);
-    if (!fs.is_open())
-        throw std::runtime_error("Cannot open the file "+path+" for storing.");
-    constexpr char const *BINARY_PPM{"P6"};
-    constexpr size_t MAX_VAL{255};
-    fs << BINARY_PPM << std::endl;
-	fs << "#Exported with Light field streaming framework" << std::endl;
-	fs << resolution.x << " " << resolution.y << std::endl;
-	fs << MAX_VAL << std::endl;
-
-    size_t pxId{0};
-    for(size_t i=0; i<data->size(); i++)
-    {
-        if(pxId != 3)
-            fs << data->at(i);
-        pxId++;
-        if(pxId > 3)
-            pxId = 0;
-    }
-}
-
 void Decoder::interpolateView(glm::vec2 position)
 {
 }
@@ -114,7 +89,21 @@ void Decoder::interpolateView(glm::vec2 position)
 void Decoder::decodeAndStore(std::string trajectory)
 {
     auto positions = parseTrajectory(trajectory);
-    videoDecoder->decodeFrame({0,0});
-    videoDecoder->decodeFrame({1,1});
-    auto frames = videoDecoder->getFrames();
+    Exporter exporter;
+    for(auto const &position : positions)
+    {
+        std::cout << "Decoding view " << std::endl;
+        videoDecoder->decodeFrame({0,0});
+        videoDecoder->decodeFrame({0,0});
+        videoDecoder->decodeFrame({0,0});
+        videoDecoder->flush();
+        while(!videoDecoder->allFramesReady())
+        {}
+        std::cout << "Interpolating view " << position.x << "_" << position.y << std::endl;
+        auto frames = videoDecoder->getFrames();
+        std::string fileName{std::to_string(position.x) + "_" + std::to_string(position.y) + ".ppm"};
+        std::cout << "Storing result to "+fileName << std::endl;
+        exporter.exportImage((*frames)[0].frame, (*frames)[0].pitch, videoDecoder->getResolution(), fileName);
+    }
+    
 }
