@@ -27,7 +27,8 @@ class VideoDecoder
         DecodedFrame(){};
         ~DecodedFrame(){if(frame) cuvidUnmapVideoFrame(decoder, frame);}
     };
-    const std::vector<DecodedFrame>* getFrames() const {return &frames;};
+    std::vector<DecodedFrame>* getFrames() {return &frames;};
+    std::vector<void*> getFramePointers();
 
     private:
     static constexpr int DECODED_COUNT{8};

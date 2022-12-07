@@ -3,10 +3,13 @@
 #include <string>
 #include "decoder.h"
 #include "exporter.h"
+#include "kernels.h"
 
 Decoder::Decoder(std::string inputPath, size_t startFrame) : renderer{std::make_unique<Renderer>()}, videoDecoder{std::make_unique<VideoDecoder>(inputPath)}, interop{std::make_unique<CudaGLInterop>()}
 {
+    interpolator = std::make_unique<Interpolator>(videoDecoder->getResolution());
     videoDecoder->seek(startFrame);
+    prepareFrames();
 }
 
 void Decoder::decodeAndPlay()
@@ -86,12 +89,40 @@ void Decoder::interpolateView(glm::vec2 position)
 {
 }
 
+Decoder::IntermediateFrame::IntermediateFrame(glm::ivec2 resolution)
+{
+        //bigger than YUV420 - hopefully covers the pitch
+        constexpr size_t CHANNELS{4};
+        if(cuMemAlloc(&frame, resolution.x*resolution.y*CHANNELS) != CUDA_SUCCESS)
+            throw std::runtime_error("Cannot allocate memory for interpolation results.");
+}
+
+void Decoder::prepareFrames()
+{
+    constexpr size_t INTERMEDIATE_COUNT{3};
+    for(size_t i=0; i<INTERMEDIATE_COUNT; i++)
+        intermediateFrames.push_back( IntermediateFrame(videoDecoder->getResolution()) );
+}
+
+std::vector<void*> Decoder::getIntermediatePtrs()
+{
+    std::vector<void*> ptrs;
+    for(auto &frame : intermediateFrames)
+        ptrs.push_back(frame.ptr());
+    return ptrs;
+}
+
 void Decoder::decodeAndStore(std::string trajectory)
 {
     auto positions = parseTrajectory(trajectory);
+    auto intermediatePtrs = getIntermediatePtrs();
+    interpolator->registerResources(&intermediatePtrs);
     Exporter exporter;
+
     for(auto const &position : positions)
     {
+ 
+
         std::cout << "Decoding view " << std::endl;
         videoDecoder->decodeFrame({0,0});
         videoDecoder->decodeFrame({0,0});
@@ -100,10 +131,20 @@ void Decoder::decodeAndStore(std::string trajectory)
         while(!videoDecoder->allFramesReady())
         {}
         std::cout << "Interpolating view " << position.x << "_" << position.y << std::endl;
+        auto framePtrs = videoDecoder->getFramePointers();
         auto frames = videoDecoder->getFrames();
+        interpolator->registerResources(&framePtrs);
+        Interpolator::Pair pair;
+        pair.first = framePtrs[0];
+        pair.second = framePtrs[1];
+        pair.pitch = {frames->at(0).pitch, frames->at(1).pitch};
+        pair.output = intermediatePtrs[0];
+        pair.weight = 0.5;
+        interpolator->interpolate( {pair} );
         std::string fileName{std::to_string(position.x) + "_" + std::to_string(position.y) + ".ppm"};
         std::cout << "Storing result to "+fileName << std::endl;
-        exporter.exportImage((*frames)[0].frame, (*frames)[0].pitch, videoDecoder->getResolution(), fileName);
+        interpolator->unregisterResources(&framePtrs);
+        exporter.exportImage(intermediateFrames[0].frame, frames->at(0).pitch, videoDecoder->getResolution(), fileName);
     }
-    
+    interpolator->unregisterResources(&intermediatePtrs);    
 }

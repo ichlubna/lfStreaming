@@ -124,6 +124,14 @@ bool VideoDecoder::allFramesReady()
     return ready;
 }
 
+std::vector<void*> VideoDecoder::getFramePointers()
+{
+    std::vector<void*> ptrs(frames.size());
+    for(size_t i=0; i<frames.size(); i++)
+        ptrs[i] = reinterpret_cast<void*>(&(frames[i].frame)); 
+    return ptrs; 
+}
+
 void VideoDecoder::incrementTime()
 {
     auto newTime = time+1;
