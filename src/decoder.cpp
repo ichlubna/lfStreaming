@@ -55,9 +55,8 @@ std::vector<glm::vec2> Decoder::parseTrajectory(std::string textTrajectory) cons
     return trajectory;
 }
 
-Decoder::SelectedFrames Decoder::pickFromGrid(glm::uvec2 gridSize, glm::vec2 position) const
+void Decoder::SelectedFrames::compute(glm::uvec2 gridSize, glm::vec2 position)
 {
-    SelectedFrames frames;
     glm::vec2 gridPosition{glm::vec2(gridSize - 1u) *position};
     glm::ivec2 downCoords{glm::floor(gridPosition)};
     glm::ivec2 upCoords{glm::ceil(gridPosition)};
@@ -68,32 +67,32 @@ Decoder::SelectedFrames Decoder::pickFromGrid(glm::uvec2 gridSize, glm::vec2 pos
 
     currentCoords = {downCoords};
     weight = (1 - unitPos.x) * (1 - unitPos.y);
-    frames.topLeft = {currentCoords, weight};
+    frames[TOP_LEFT] = {currentCoords, weight};
 
     currentCoords = {upCoords.x, downCoords.y};
     weight = unitPos.x * (1 - unitPos.y);
-    frames.topLeft = {currentCoords, weight};
+    frames[TOP_RIGHT] = {currentCoords, weight};
 
     currentCoords = {downCoords.x, upCoords.y};
     weight = (1 - unitPos.x) * unitPos.y;
-    frames.topLeft = {currentCoords, weight};
+    frames[BOTTOM_LEFT] = {currentCoords, weight};
 
     currentCoords = {upCoords};
     weight = unitPos.x * unitPos.y;
-    frames.topLeft = {currentCoords, weight};    
-
-    return frames;
+    frames[BOTTOM_RIGHT] = {currentCoords, weight};    
 }
 
-void Decoder::interpolateView(glm::vec2 position)
+Decoder::SelectedFrames::InterpolationInfo Decoder::SelectedFrames::guide(Order order) 
 {
+    InterpolationInfo info;
+
+    return info;
 }
 
 Decoder::IntermediateFrame::IntermediateFrame(glm::ivec2 resolution)
 {
-        //bigger than YUV420 - hopefully covers the pitch
-        constexpr size_t CHANNELS{4};
-        if(cuMemAlloc(&frame, resolution.x*resolution.y*CHANNELS) != CUDA_SUCCESS)
+        //if(cuMemAlloc(&frame, resolution.x*resolution.y*CHANNELS) != CUDA_SUCCESS)
+        if(cuMemAllocPitch(&frame, &pitch, resolution.x, resolution.y*2, 4) != CUDA_SUCCESS)
             throw std::runtime_error("Cannot allocate memory for interpolation results.");
 }
 
@@ -112,6 +111,11 @@ std::vector<void*> Decoder::getIntermediatePtrs()
     return ptrs;
 }
 
+CUdeviceptr Decoder::decodeAndInterpolate(glm::vec2 position)
+{
+
+}
+
 void Decoder::decodeAndStore(std::string trajectory)
 {
     auto positions = parseTrajectory(trajectory);
@@ -121,8 +125,6 @@ void Decoder::decodeAndStore(std::string trajectory)
 
     for(auto const &position : positions)
     {
- 
-
         std::cout << "Decoding view " << std::endl;
         videoDecoder->decodeFrame({0,0});
         videoDecoder->decodeFrame({0,0});
@@ -144,7 +146,8 @@ void Decoder::decodeAndStore(std::string trajectory)
         std::string fileName{std::to_string(position.x) + "_" + std::to_string(position.y) + ".ppm"};
         std::cout << "Storing result to "+fileName << std::endl;
         interpolator->unregisterResources(&framePtrs);
-        exporter.exportImage(intermediateFrames[0].frame, frames->at(0).pitch, videoDecoder->getResolution(), fileName);
+        
+        exporter.exportImage(intermediateFrames[0].frame, intermediateFrames[0].pitch, videoDecoder->getResolution(), fileName);
     }
     interpolator->unregisterResources(&intermediatePtrs);    
 }

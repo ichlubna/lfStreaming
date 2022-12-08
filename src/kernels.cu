@@ -113,11 +113,11 @@ namespace Conversion
                 coef = yuvCommonCoefInt;
             }
 
-            const int2 offsets[4]{ {0,0}, {0,1}, {1,0}, {1,1} };
+            const int2 offsets[4]{ {0,0}, {1,0}, {0,1}, {1,1} };
             for(int i=0; i<BLOCK_SIZE; i++)
             {
                 uchar4 data = RGBToRGBA8(YRuvGuvBuvToRGB((Y[i]-16)*coef, ruv, buv, guv));
-                surf2Dwrite(data, RGBA, (blockCoords.x+offsets[i].x)*sizeof(uchar4), blockCoords.y+offsets[i].y, cudaBoundaryModeClamp);
+                surf2Dwrite(data, RGBA, (blockCoords.x+offsets[i].x)*sizeof(uchar4), blockCoords.y-offsets[i].y-1, cudaBoundaryModeClamp);
             }
         }
     };
@@ -133,15 +133,16 @@ namespace Conversion
         block.initCoords(coords, doubleCoords, resolution, halfResolution, pitch);
         block.load(NV12, pixelCount);
         if constexpr (FLOAT_YUV_CONVERSION)
-            block.storeRGBA<float>(RGBA, {doubleCoords.x, resolution.y-1-doubleCoords.y}); 
+            block.storeRGBA<float>(RGBA, {doubleCoords.x, resolution.y-doubleCoords.y}); 
         else
-            block.storeRGBA<int>(RGBA, {doubleCoords.x, resolution.y-1-doubleCoords.y}); 
+            block.storeRGBA<int>(RGBA, {doubleCoords.x, resolution.y-doubleCoords.y}); 
     }
     
     void NV12ToRGBA(uint8_t *NV12, cudaSurfaceObject_t RGBA, int2 resolution, int pitch)
     {
+        int2 halfResolution{resolution.x>>1, resolution.y>>1};
         constexpr dim3 WG_SIZE{16,16,1};
-        dim3 wgCount{1+resolution.x/WG_SIZE.x/2, 1+resolution.y/WG_SIZE.y/2, 1};
-        NV12ToRGBAKernel<<<wgCount, WG_SIZE, 0>>>(NV12, RGBA, resolution, {resolution.x/2, resolution.y/2}, pitch*resolution.y, pitch);
+        dim3 wgCount{1+halfResolution.x/WG_SIZE.x, 1+halfResolution.y/WG_SIZE.y, 1};
+        NV12ToRGBAKernel<<<wgCount, WG_SIZE, 0>>>(NV12, RGBA, resolution, halfResolution, pitch*resolution.y, pitch);
     }
 }

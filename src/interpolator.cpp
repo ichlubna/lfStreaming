@@ -64,7 +64,7 @@ void Interpolator::process(float factor, bool updateOnly, void *input, void *out
     inParams.stFrameDataInput.nTimeStamp = frameNumber;
     inParams.stFrameDataInput.nCuSurfacePitch = pitch;
     inParams.bSkipWarp = updateOnly;
-
+    
     NvOFFRUC_PROCESS_OUT_PARAMS outParams{};
     outParams.stFrameDataOutput.pFrame = output;
     outParams.stFrameDataOutput.nCuSurfacePitch = pitch;
