@@ -40,11 +40,11 @@ Encoder::StreamFormat Encoder::stringToFormat(std::string format) const
 void Encoder::checkDir(std::string path)
 {
     if(!std::filesystem::exists(path))
-        throw std::runtime_error("The path "+path+" does not exist!");
+        throw std::runtime_error("The path " + path + " does not exist!");
     if(!std::filesystem::is_directory(path))
-        throw std::runtime_error("The path "+path+" does not lead to a directory!");
+        throw std::runtime_error("The path " + path + " does not lead to a directory!");
     if(std::filesystem::is_empty(path))
-        throw std::runtime_error("The directory "+path+" is empty!");
+        throw std::runtime_error("The directory " + path + " is empty!");
 }
 
 void Encoder::encode(std::string inputDir, std::string outputFile, float quality, std::string format, glm::ivec2 keyCoords, int keyInterval)
@@ -55,7 +55,7 @@ void Encoder::encode(std::string inputDir, std::string outputFile, float quality
     auto timeFrameDirs = Muxing::listPath(inputDir);
     timeFrameCount = timeFrameDirs.size();
     for(auto const &dir : timeFrameDirs)
-        encodeTimeFrame(inputDir/dir, quality, format);
+        encodeTimeFrame(inputDir / dir, quality, format);
     muxer->save(outputFile);
 }
 
@@ -77,9 +77,9 @@ void Encoder::encodeTimeFrame(std::string inputDir, float quality, std::string f
     std::advance(it, referenceIndex);
     std::string referenceFrame = *it;
     std::filesystem::path path{inputDir};
-    PairEncoder refFrame(path/referenceFrame, path/referenceFrame, crf, videoFormat);
+    PairEncoder refFrame(path / referenceFrame, path / referenceFrame, crf, videoFormat);
     auto resolution = refFrame.getResolution();
-    
+
     if(!muxer->isInitialized())
         muxer->init(resolution, colsRows, videoFormat, timeFrameCount);
 
@@ -91,7 +91,7 @@ void Encoder::encodeTimeFrame(std::string inputDir, float quality, std::string f
         }
         else
         {
-            PairEncoder newFrame(path/referenceFrame, path/file, crf, videoFormat);
+            PairEncoder newFrame(path / referenceFrame, path / file, crf, videoFormat);
             bar.add();
             *muxer << newFrame.getFramePacket();
         }
@@ -218,7 +218,7 @@ AVFrame *Encoder::PairEncoder::convertFrame(const AVFrame *inputFrame, AVPixelFo
     outputFrame->width = inputFrame->width;
     outputFrame->height = inputFrame->height;
     outputFrame->format = pxFormat;
-    av_frame_get_buffer(outputFrame, CHANNELS*8);
+    av_frame_get_buffer(outputFrame, CHANNELS * 8);
     auto swsContext = sws_getContext(inputFrame->width, inputFrame->height, static_cast<AVPixelFormat>(inputFrame->format),
                                      inputFrame->width, inputFrame->height, pxFormat, SWS_BICUBIC, nullptr, nullptr, nullptr);
     if(!swsContext)

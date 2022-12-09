@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include "renderer.h"
 
-const char *vertexShaderSource = R""""( 
+const char *vertexShaderSource = R""""(
 #version 330 core
 layout (location = 0) in vec3 position;
 layout (location = 1) in vec2 inTexCoord;
@@ -36,18 +36,18 @@ void Renderer::createWindow()
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, []([[maybe_unused]]GLFWwindow * window, int width, int height)
     {
-          glViewport(0, 0, width, height);
+        glViewport(0, 0, width, height);
     });
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED | GLFW_CURSOR_HIDDEN);
     glfwSetWindowUserPointer(window, this);
     glfwSetCursorPosCallback(window, [](GLFWwindow * window, double xPos, double yPos)
     {
-        auto *renderer = reinterpret_cast<Renderer*>(glfwGetWindowUserPointer(window));
+        auto *renderer = reinterpret_cast<Renderer *>(glfwGetWindowUserPointer(window));
         renderer->setMousePosition({xPos, yPos});
     });
-     glfwSetKeyCallback(window, []([[maybe_unused]]GLFWwindow * window, int key, [[maybe_unused]]int scancode, [[maybe_unused]]int action, [[maybe_unused]]int mods)
+    glfwSetKeyCallback(window, []([[maybe_unused]]GLFWwindow * window, int key, [[maybe_unused]]int scancode, [[maybe_unused]]int action, [[maybe_unused]]int mods)
     {
-        auto *renderer = reinterpret_cast<Renderer*>(glfwGetWindowUserPointer(window));
+        auto *renderer = reinterpret_cast<Renderer *>(glfwGetWindowUserPointer(window));
         switch(key)
         {
         case GLFW_KEY_ESCAPE:
@@ -78,13 +78,14 @@ void Renderer::loadShaders()
 
 void Renderer::prepareQuad()
 {
-    constexpr size_t VERTEX_SIZE{5*sizeof(GLfloat)};
-    constexpr size_t UV_OFFSET{3*sizeof(GLfloat)};
-    
-    std::vector<float> vertices{
-    -1.0f, 3.0f, 0.0f,  0.0f, 2.0f,
-    3.0f, -1.0f, 0.0f,   2.0f, 0.0f,
-    -1.0f,-1.0f, 0.0f,  0.0f, 0.0f};
+    constexpr size_t VERTEX_SIZE{5 * sizeof(GLfloat)};
+    constexpr size_t UV_OFFSET{3 * sizeof(GLfloat)};
+
+    std::vector<float> vertices
+    {
+        -1.0f, 3.0f, 0.0f,  0.0f, 2.0f,
+            3.0f, -1.0f, 0.0f,   2.0f, 0.0f,
+            -1.0f, -1.0f, 0.0f,  0.0f, 0.0f};
     //Y flipped
     /*std::vector<float> vertices{
     -1.0f, 1.0f, 0.0f,  0.0f, 0.0f,
@@ -98,17 +99,17 @@ void Renderer::prepareQuad()
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, vertices.size()*sizeof(GLfloat), vertices.data(), GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEX_SIZE, (char*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEX_SIZE, (char *)0);
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEX_SIZE, (char*)0 + UV_OFFSET);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);  
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEX_SIZE, (char *)0 + UV_OFFSET);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 unsigned int Renderer::getTexture(glm::ivec2 resolution)
 {
     glDeleteTextures(1, &texture);
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -118,7 +119,7 @@ unsigned int Renderer::getTexture(glm::ivec2 resolution)
 
 void Renderer::setupGL()
 {
-    if (glewInit() != GLEW_OK)
+    if(glewInit() != GLEW_OK)
         throw std::runtime_error("Cannot init glew");
 
     loadShaders();
@@ -128,7 +129,7 @@ void Renderer::setupGL()
 void Renderer::init()
 {
     createWindow();
-    setupGL(); 
+    setupGL();
     prepared = true;
 }
 

@@ -6,8 +6,9 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra -pedantic -fmodules-ts")
 set(${PROJECT_NAME}_VERSION_MAJOR 0)
 set(${PROJECT_NAME}_VERSION_MINOR 0)
 
-
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules")
+set(ASTYLE_BINARY "astyle" CACHE PATH "Path to astyle binary to format the code by \"make format\"")
+set(ASTYLE_OPTIONS -A1 -C -n -k3 -p -U -xg CACHE STRING "Astyle options used by \"make format\"")
 
 set(SOURCES 
 src/decoder.cpp
@@ -53,3 +54,5 @@ target_compile_options(${PROJECT_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-Xcuda
 
 target_link_libraries(${ENCODER} ffmpeg swscale)
 
+add_custom_target(format WORKING_DIRECTORY ${CMAKE_PROJECT_DIR})
+add_custom_command(TARGET format COMMAND ${ASTYLE_BINARY} ${CMAKE_SOURCE_DIR}/src/*.cpp,*.h,*.cu ${ASTYLE_OPTIONS})

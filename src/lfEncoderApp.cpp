@@ -12,9 +12,9 @@ int main(int argc, char **argv)
     std::string format = static_cast<std::string>(args["-f"]);
     std::string outputFile = static_cast<std::string>(args["-o"]);
 
-    glm::ivec2 keyCoords{-1,-1};
+    glm::ivec2 keyCoords{-1, -1};
     int keyInterval{-1};
-    
+
     std::string helpText{ "Usage:\n"
                           "Example: lfEncoder -i /MyAmazingMachine/thoseImages -q 1.0 -f H265 -o ./coolFile.lf\n"
                           "-i - directory with subdirectiories of lf grid images\n"

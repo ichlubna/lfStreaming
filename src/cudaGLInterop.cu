@@ -33,9 +33,9 @@ void CudaGLInterop::copyData(CUdeviceptr input, int pitch)
     resourceDesc.resType = cudaResourceTypeArray;
     resourceDesc.res.array.array = output;
     cudaSurfaceObject_t surface;
-    cudaCreateSurfaceObject(&surface, &resourceDesc); 
-    Conversion::NV12ToRGBA(reinterpret_cast<uint8_t*>(input), surface, {resolution.x, resolution.y}, pitch);
+    cudaCreateSurfaceObject(&surface, &resourceDesc);
+    Conversion::NV12ToRGBA(reinterpret_cast<uint8_t *>(input), surface, {resolution.x, resolution.y}, pitch);
     cudaDestroySurfaceObject(surface);
     cudaGraphicsUnmapResources(1, &graphicsResource);
-    cudaStreamSynchronize(0); 
+    cudaStreamSynchronize(0);
 }

@@ -4,25 +4,38 @@
 class Renderer
 {
     public:
-    Renderer();
-    void render();
-    void init();
-    void inputs();
-    void setMousePosition(glm::vec2 position){mousePosition=position;};
-    bool ready(){return prepared;};
-    unsigned int getTexture(glm::ivec2 resolution);
+        Renderer();
+        void render();
+        void init();
+        void inputs();
+        void setMousePosition(glm::vec2 position)
+        {
+            mousePosition = position;
+        };
+        glm::vec2 getMousePosition()
+        {
+            return mousePosition;
+        }
+        bool ready()
+        {
+            return prepared;
+        };
+        unsigned int getTexture(glm::ivec2 resolution);
 
     private:
-    bool prepared{false};
-    unsigned int shaderProgram;
-    unsigned int texture;
-    glm::uvec2 initialResolution{1280, 720};
-    const char *windowName{"Lightfield"};
-    glm::vec2 mousePosition;
-    GLFWwindow *window;
-    void createWindow();
-    void loadShaders();
-    void prepareQuad();
-    void setupGL();
-    void quit(){prepared=false;};
+        bool prepared{false};
+        unsigned int shaderProgram;
+        unsigned int texture;
+        glm::uvec2 initialResolution{1280, 720};
+        const char *windowName{"Lightfield"};
+        glm::vec2 mousePosition;
+        GLFWwindow *window;
+        void createWindow();
+        void loadShaders();
+        void prepareQuad();
+        void setupGL();
+        void quit()
+        {
+            prepared = false;
+        };
 };

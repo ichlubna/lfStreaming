@@ -17,7 +17,7 @@ glm::uvec2 Muxing::parseFilename(std::string name)
 {
     auto delimiterPos = name.find('_');
     if(delimiterPos == std::string::npos)
-        throw std::runtime_error("Missing delimiter in "+name+" as column_row!");
+        throw std::runtime_error("Missing delimiter in " + name + " as column_row!");
     int extensionPos = name.find('.');
     auto row = name.substr(0, delimiterPos);
     auto col = name.substr(delimiterPos + 1, extensionPos - delimiterPos - 1);
@@ -26,7 +26,7 @@ glm::uvec2 Muxing::parseFilename(std::string name)
 
 size_t Muxing::Muxer::getLinearIndex(glm::ivec3 colsRowsTime)
 {
-    return data.gridSize()*colsRowsTime.z + colsRowsTime.y*data.colsRows().x + colsRowsTime.x; 
+    return data.gridSize() * colsRowsTime.z + colsRowsTime.y * data.colsRows().x + colsRowsTime.x;
 }
 
 void Muxing::Muxer::endTimeFrame(glm::uvec2 referenceCoords)
@@ -45,7 +45,7 @@ void Muxing::EncodedData::addData(const std::vector<uint8_t> *packetData)
 void Muxing::EncodedData::initHeader(glm::uvec2 resolution, glm::uvec2 colsRows, uint32_t format, uint32_t timeFrameCount)
 {
     header = {resolution.x, resolution.y, colsRows.x, colsRows.y, format, timeFrameCount};
-    size_t count{colsRows.x * colsRows.y * timeFrameCount}; 
+    size_t count{colsRows.x *colsRows.y * timeFrameCount};
     offsets.reserve(count);
     references.reserve(count);
 }
@@ -74,21 +74,21 @@ Muxing::Demuxer::Demuxer(std::string filePath)
     std::ifstream fis(filePath, std::ios::binary | std::ios::ate);
     size_t fileSize{static_cast<size_t>(fis.tellg())};
     fis.clear();
-    fis.seekg (0, std::ios::beg);
+    fis.seekg(0, std::ios::beg);
 
     if(fileSize < EncodedData::HEADER_VALUES_COUNT)
         throw std::runtime_error("Input file is empty.");
 
     constexpr size_t BYTE_COUNT{4};
     data.header.resize(EncodedData::HEADER_VALUES_COUNT);
-    fis.read(reinterpret_cast<char *>(data.header.data()), BYTE_COUNT*EncodedData::HEADER_VALUES_COUNT);
-    
-    data.offsets.resize(1+data.gridSize()*data.timeFrameCount());
+    fis.read(reinterpret_cast<char *>(data.header.data()), BYTE_COUNT * EncodedData::HEADER_VALUES_COUNT);
+
+    data.offsets.resize(1 + data.gridSize()*data.timeFrameCount());
     fis.read(reinterpret_cast<char *>(data.offsets.data()), data.offsets.size()*BYTE_COUNT);
     data.references.resize(data.timeFrameCount());
     fis.read(reinterpret_cast<char *>(data.references.data()), data.references.size()*BYTE_COUNT);
-   
-    size_t calculatedFileSize{BYTE_COUNT*(data.gridSize() + data.timeFrameCount() + EncodedData::HEADER_VALUES_COUNT) + data.offsets.back()};
+
+    size_t calculatedFileSize{BYTE_COUNT *(data.gridSize() + data.timeFrameCount() + EncodedData::HEADER_VALUES_COUNT) + data.offsets.back()};
     if(fileSize < calculatedFileSize)
         throw std::runtime_error("Missing packets data in the input file.");
 
@@ -99,7 +99,7 @@ Muxing::Demuxer::Demuxer(std::string filePath)
 
 size_t Muxing::Demuxer::getLinearIndex(glm::ivec3 colsRowsTime)
 {
-    return data.gridSize()*colsRowsTime.z + colsRowsTime.y*data.colsRows().x + colsRowsTime.x; 
+    return data.gridSize() * colsRowsTime.z + colsRowsTime.y * data.colsRows().x + colsRowsTime.x;
 }
 
 std::vector<uint8_t> Muxing::Demuxer::copyPacket(glm::ivec3 colsRowsTime)
@@ -115,7 +115,7 @@ const Muxing::Demuxer::PacketPointer Muxing::Demuxer::getReferencePacket(int tim
     PacketPointer packetPointer;
     size_t referenceID = data.references[time];
     packetPointer.data = &data.packets.data()[data.offsets[referenceID]];
-    packetPointer.size = data.offsets[referenceID+1] - data.offsets[referenceID];
+    packetPointer.size = data.offsets[referenceID + 1] - data.offsets[referenceID];
     return packetPointer;
 }
 
@@ -124,6 +124,6 @@ const Muxing::Demuxer::PacketPointer Muxing::Demuxer::getPacket(glm::ivec3 colsR
     PacketPointer packetPointer;
     size_t index = getLinearIndex(colsRowsTime);
     packetPointer.data = &data.packets.data()[data.offsets[index]];
-    packetPointer.size = data.offsets[index+1] - data.offsets[index];
+    packetPointer.size = data.offsets[index + 1] - data.offsets[index];
     return packetPointer;
 }

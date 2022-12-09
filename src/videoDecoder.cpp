@@ -37,16 +37,17 @@ void VideoDecoder::checkGPU()
 
     if(cuvidGetDecoderCaps(&capabilities) != CUDA_SUCCESS)
         throw std::runtime_error("Cannot check decoder capabilities.");
- 
+
     if(!capabilities.bIsSupported)
         throw std::runtime_error("Codec not available.");
-    
-    if ((demuxer->data.resolution().x > capabilities.nMaxWidth) || (demuxer->data.resolution().y > capabilities.nMaxHeight))
+
+    if((demuxer->data.resolution().x > capabilities.nMaxWidth) || (demuxer->data.resolution().y > capabilities.nMaxHeight))
         throw std::runtime_error("Video resolution not supported.");
 }
 
 void VideoDecoder::createDecoder()
-{;
+{
+    ;
     CUVIDDECODECREATEINFO videoDecodeCreateInfo{};
     videoDecodeCreateInfo.CodecType = getCodec();
     videoDecodeCreateInfo.ChromaFormat = chromaFormat;
@@ -81,10 +82,10 @@ void VideoDecoder::createParser()
 int VideoDecoder::videoSequence(CUVIDEOFORMAT *format)
 {
     return DECODER_CALLBACK_SUCCESS;
-} 
+}
 
 int VideoDecoder::decodePicture(CUVIDPICPARAMS *picParams)
-{  
+{
     if(cuvidDecodePicture(decoder, picParams) != CUDA_SUCCESS)
         throw std::runtime_error("Cannot decode picture.");
     return DECODER_CALLBACK_SUCCESS;
@@ -96,25 +97,21 @@ void VideoDecoder::prepareFrame(int timestamp, int pictureID, CUVIDPROCPARAMS pa
     frames[finalID] = DecodedFrame(decoder);
     cuvidMapVideoFrame(decoder, pictureID, &(frames[finalID].frame),  &(frames[finalID].pitch), &params);
 }
- 
+
 int VideoDecoder::displayPicture(CUVIDPARSERDISPINFO *dispInfo)
 {
     CUVIDPROCPARAMS videoProcessingParameters{};
-    videoProcessingParameters.progressive_frame = dispInfo->progressive_frame;
-    videoProcessingParameters.second_field = dispInfo->repeat_first_field + 1;
-    videoProcessingParameters.top_field_first = dispInfo->top_field_first;
-    videoProcessingParameters.unpaired_field = dispInfo->repeat_first_field < 0;
     videoProcessingParameters.output_stream = 0;
     CUVIDGETDECODESTATUS status{};
     if(cuvidGetDecodeStatus(decoder, dispInfo->picture_index, &status) != CUDA_SUCCESS)
         throw std::runtime_error("Cannot check decoding status.");
-    if (status.decodeStatus == cuvidDecodeStatus_Error || status.decodeStatus == cuvidDecodeStatus_Error_Concealed)
+    if(status.decodeStatus == cuvidDecodeStatus_Error || status.decodeStatus == cuvidDecodeStatus_Error_Concealed)
         throw std::runtime_error("Cannot get decoded frame.");
-  
-     
-    prepareFrame(dispInfo->timestamp, dispInfo->picture_index, videoProcessingParameters); 
+
+
+    prepareFrame(dispInfo->timestamp, dispInfo->picture_index, videoProcessingParameters);
     return DECODER_CALLBACK_SUCCESS;
-} 
+}
 
 bool VideoDecoder::allFramesReady()
 {
@@ -124,19 +121,19 @@ bool VideoDecoder::allFramesReady()
     return ready;
 }
 
-std::vector<void*> VideoDecoder::getFramePointers()
+std::vector<void *> VideoDecoder::getFramePointers()
 {
-    std::vector<void*> ptrs(frames.size());
-    for(size_t i=0; i<frames.size(); i++)
-        ptrs[i] = reinterpret_cast<void*>(&(frames[i].frame)); 
-    return ptrs; 
+    std::vector<void *> ptrs(frames.size());
+    for(size_t i = 0; i < frames.size(); i++)
+        ptrs[i] = reinterpret_cast<void *>(&(frames[i].frame));
+    return ptrs;
 }
 
 void VideoDecoder::incrementTime()
 {
-    auto newTime = time+1;
+    auto newTime = time + 1;
     if(newTime >= demuxer->data.timeFrameCount())
-         newTime=0;
+        newTime = 0;
     seek(newTime);
 }
 
@@ -144,6 +141,7 @@ void VideoDecoder::seek(size_t newTime)
 {
     time = newTime;
     decode(demuxer->getReferencePacket(time));
+    decodedNumber = 0;
 }
 
 void VideoDecoder::decodeFrame(glm::ivec2 position)
@@ -154,7 +152,7 @@ void VideoDecoder::decodeFrame(glm::ivec2 position)
 
 void VideoDecoder::flush()
 {
-    decode({nullptr,0});
+    decode({nullptr, 0});
 }
 
 void VideoDecoder::decode(Muxing::Demuxer::PacketPointer packetPointer)
@@ -165,7 +163,7 @@ void VideoDecoder::decode(Muxing::Demuxer::PacketPointer packetPointer)
     packet.flags = CUVID_PKT_TIMESTAMP;
     packet.timestamp = decodedNumber;
     decodedNumber++;
-    if (packetPointer.size == 0) 
+    if(packetPointer.size == 0)
         packet.flags |= CUVID_PKT_ENDOFSTREAM;
     if(cuvidParseVideoData(parser, &packet) != CUDA_SUCCESS)
         throw std::runtime_error("Cannot parse packet.");
