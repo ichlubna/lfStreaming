@@ -93,9 +93,13 @@ int VideoDecoder::decodePicture(CUVIDPICPARAMS *picParams)
 
 void VideoDecoder::prepareFrame(int timestamp, int pictureID, CUVIDPROCPARAMS params)
 {
-    int finalID = timestamp % FRAME_COUNT;
-    frames[finalID] = DecodedFrame(decoder);
-    cuvidMapVideoFrame(decoder, pictureID, &(frames[finalID].frame),  &(frames[finalID].pitch), &params);
+    if(timestamp != 0)
+    { 
+        int finalID = (timestamp-1) % FRAME_COUNT;
+        frames[finalID] = DecodedFrame(decoder);
+        if(cuvidMapVideoFrame(decoder, pictureID, &(frames[finalID].frame),  &(frames[finalID].pitch), &params) != CUDA_SUCCESS)
+            throw std::runtime_error("Cannot map frame.");
+    }
 }
 
 int VideoDecoder::displayPicture(CUVIDPARSERDISPINFO *dispInfo)
@@ -120,6 +124,12 @@ bool VideoDecoder::allFramesReady()
         ready = ready && (frame.frame != 0);
     return ready;
 }
+        
+void VideoDecoder::clearBuffer()
+{
+    frames.clear();
+    frames.resize(FRAME_COUNT);
+}
 
 std::vector<void *> VideoDecoder::getFramePointers()
 {
@@ -140,8 +150,8 @@ void VideoDecoder::incrementTime()
 void VideoDecoder::seek(size_t newTime)
 {
     time = newTime;
-    decode(demuxer->getReferencePacket(time));
     decodedNumber = 0;
+    decode(demuxer->getReferencePacket(time));
 }
 
 void VideoDecoder::decodeFrame(glm::ivec2 position)

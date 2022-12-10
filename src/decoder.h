@@ -44,11 +44,18 @@ class Decoder
                 Frame frames[InterpolationInfo::FRAME_COUNT];
 
                 void compute(glm::uvec2 gridSize, glm::vec2 position);
-                float interWeight(Order first, Order second) const
+                float interWeight(Order order) const
                 {
-                    return frames[second].weight / (frames[first].weight + frames[second].weight);
+                    auto o = orderIDs[order];
+                    float first = frames[o[0]].weight+frames[o[1]].weight;
+                    float second = frames[o[2]].weight+frames[o[3]].weight;
+                    return interWeightVal(first, second);
                 }
-                float interWeight(float first, float second) const
+                float interWeight(FramePosition first, FramePosition second) const
+                {
+                    return interWeightVal(frames[first].weight, frames[second].weight);
+                }
+                float interWeightVal(float first, float second) const
                 {
                     return second / (first + second);
                 }
@@ -85,4 +92,5 @@ class Decoder
         InterpolationResult decodeAndInterpolate(glm::vec2 position);
         void prepareFrames();
         std::vector<void *> getIntermediatePtrs();
+        glm::vec2 cameraPosition();
 };

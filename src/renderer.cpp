@@ -38,12 +38,14 @@ void Renderer::createWindow()
     {
         glViewport(0, 0, width, height);
     });
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED | GLFW_CURSOR_HIDDEN);
+//    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED | GLFW_CURSOR_HIDDEN);
     glfwSetWindowUserPointer(window, this);
     glfwSetCursorPosCallback(window, [](GLFWwindow * window, double xPos, double yPos)
     {
         auto *renderer = reinterpret_cast<Renderer *>(glfwGetWindowUserPointer(window));
-        renderer->setMousePosition({xPos, yPos});
+        int width, height;
+        glfwGetWindowSize(window, &width, &height);
+        renderer->setMousePosition({xPos/width, yPos/height});
     });
     glfwSetKeyCallback(window, []([[maybe_unused]]GLFWwindow * window, int key, [[maybe_unused]]int scancode, [[maybe_unused]]int action, [[maybe_unused]]int mods)
     {

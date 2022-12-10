@@ -1,3 +1,4 @@
+#include <glm/detail/qualifier.hpp>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -34,26 +35,26 @@ void Decoder::setInterpolationMethod(std::string method)
     }
 }
 
+glm::vec2 Decoder::cameraPosition()
+{
+    auto mouse = renderer->getMousePosition();
+    constexpr float DELTA{0.0000001};
+    mouse.x=0;
+    return glm::clamp(mouse, {0+DELTA, 0+DELTA}, {1-DELTA, 1-DELTA});
+}
+
 void Decoder::decodeAndPlay()
 {
     auto resolution = videoDecoder->getResolution();
     renderer->init();
     interop->setTexture(renderer->getTexture(resolution), resolution);
-    glm::vec2 previousMouse;
-    float mouseSensitivity{0.00001};
-    glm::vec2 camera{0.5, 0.5};
     while(renderer->ready())
     {
-        auto mouse = renderer->getMousePosition();
-        auto mouseOffset = mouse - previousMouse;
-        previousMouse = mouse;
-        camera += mouseOffset * mouseSensitivity;
-        camera = glm::clamp(camera, {0, 0}, {1, 1});
-
-        //std::cerr << camera.x << " " << camera.y << std::endl;
-
-        auto result = decodeAndInterpolate(camera);
-        interop->copyData(result.frame, result.pitch);
+        if(renderer->mouseChanged())
+        {
+            auto result = decodeAndInterpolate(cameraPosition());
+            interop->copyData(result.frame, result.pitch);
+        }
         renderer->render();
     }
 }
@@ -86,7 +87,7 @@ std::vector<glm::vec2> Decoder::parseTrajectory(std::string textTrajectory) cons
 
 void Decoder::SelectedFrames::compute(glm::uvec2 gridSize, glm::vec2 position)
 {
-    glm::vec2 gridPosition{glm::vec2(gridSize - 1u) *position};
+    glm::vec2 gridPosition{glm::vec2(gridSize - 1u)*position};
     glm::ivec2 downCoords{glm::floor(gridPosition)};
     glm::ivec2 upCoords{glm::ceil(gridPosition)};
 
@@ -97,7 +98,7 @@ void Decoder::SelectedFrames::compute(glm::uvec2 gridSize, glm::vec2 position)
     currentCoords = {downCoords};
     weight = (1 - unitPos.x) * (1 - unitPos.y);
     frames[TOP_LEFT] = {currentCoords, weight};
-
+    
     currentCoords = {upCoords.x, downCoords.y};
     weight = unitPos.x * (1 - unitPos.y);
     frames[TOP_RIGHT] = {currentCoords, weight};
@@ -117,15 +118,18 @@ Decoder::SelectedFrames::InterpolationInfo Decoder::SelectedFrames::guide(Order 
     auto &selectedOrder = orderIDs[order];
     for(size_t i = 0; i < InterpolationInfo::FRAME_COUNT; i++)
         info.positions[i] = frames[selectedOrder[i]].coord;
-    for(size_t i = 0; i < 2 * (InterpolationInfo::WEIGHTS_COUNT - 1); i += 2)
-        info.weights[i] = interWeight(selectedOrder[i], selectedOrder[i + 1]);
-    info.weights[InterpolationInfo::WEIGHTS_COUNT - 1] = interWeight(info.weights[0], info.weights[1]);
+    info.weights[0] = interWeight(selectedOrder[0], selectedOrder[1]);
+    info.weights[1] = interWeight(selectedOrder[2], selectedOrder[3]);
+    info.weights[2] = interWeight(order);
+    std::cerr << info.weights[0] << " " << info.weights[1] << " " << info.weights[2] << std::endl;
+    for(int i=0; i<4; i++)
+    std::cerr << info.positions[i].x << "-" << info.positions[i].y << " ";
+    std::cerr << std::endl;
     return info;
 }
 
 Decoder::IntermediateFrame::IntermediateFrame(glm::ivec2 resolution)
 {
-    //if(cuMemAlloc(&frame, resolution.x*resolution.y*CHANNELS) != CUDA_SUCCESS)
     if(cuMemAllocPitch(&frame, &pitch, resolution.x, resolution.y * 2, 4) != CUDA_SUCCESS)
         throw std::runtime_error("Cannot allocate memory for interpolation results.");
 }
@@ -147,10 +151,13 @@ std::vector<void *> Decoder::getIntermediatePtrs()
 
 Decoder::InterpolationResult Decoder::decodeAndInterpolate(glm::vec2 position)
 {
+    videoDecoder->clearBuffer();
+    //TODO remove the seeking every time
+    videoDecoder->seek(0);
     framePicker.compute(videoDecoder->getColsRows(), position);
     auto guide = framePicker.guide(interpolationOrder);
     for(size_t i = 0; i < guide.FRAME_COUNT; i++)
-        videoDecoder->decodeFrame(guide.positions[i]);
+       videoDecoder->decodeFrame(guide.positions[i]);
     videoDecoder->flush();
     while(!videoDecoder->allFramesReady()) {}
 
@@ -188,32 +195,6 @@ void Decoder::decodeAndStore(std::string trajectory, std::string outputPath)
 {
     auto positions = parseTrajectory(trajectory);
     Exporter exporter;
-    /*
-        for(auto const &position : positions)
-        {
-            std::cout << "Decoding view " << std::endl;
-            videoDecoder->decodeFrame({0,0});
-            videoDecoder->decodeFrame({0,0});
-            videoDecoder->decodeFrame({0,0});
-            videoDecoder->decodeFrame({0,0});
-            videoDecoder->flush();
-            while(!videoDecoder->allFramesReady())
-            {}
-            std::cout << "Interpolating view " << position.x << "_" << position.y << std::endl;
-            auto framePtrs = videoDecoder->getFramePointers();
-            auto frames = videoDecoder->getFrames();
-            interpolator->registerResources(&framePtrs);
-            Interpolator::Pair pair;
-            pair.first = framePtrs[0];
-            pair.second = framePtrs[1];
-            pair.pitch = {frames->at(0).pitch, frames->at(1).pitch};
-            pair.output = intermediatePtrs[0];
-            pair.weight = 0.5;
-            interpolator->interpolate( {pair} );
-            std::string fileName{std::to_string(position.x) + "_" + std::to_string(position.y) + ".ppm"};
-            std::cout << "Storing result to "+fileName << std::endl;
-            interpolator->unregisterResources(&framePtrs);
-    */
 
     for(auto const &position : positions)
     {

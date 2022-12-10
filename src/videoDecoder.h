@@ -27,6 +27,7 @@ class VideoDecoder
         void decodeFrame(glm::ivec2 position);
         void flush();
         bool allFramesReady();
+        void clearBuffer();
         class DecodedFrame
         {
             public:
@@ -37,7 +38,10 @@ class VideoDecoder
                 DecodedFrame() {};
                 ~DecodedFrame()
                 {
-                    if(frame) cuvidUnmapVideoFrame(decoder, frame);
+                    if(frame != 0)
+                    {
+                        cuvidUnmapVideoFrame(decoder, frame);
+                    }
                 }
         };
         std::vector<DecodedFrame> *getFrames()

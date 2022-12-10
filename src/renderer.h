@@ -11,11 +11,19 @@ class Renderer
         void setMousePosition(glm::vec2 position)
         {
             mousePosition = position;
+            mouseMoved = true;
         };
         glm::vec2 getMousePosition()
         {
             return mousePosition;
         }
+        bool mouseChanged()
+        {
+            bool move = mouseMoved;
+            mouseMoved = false;
+            return move;
+        }
+        
         bool ready()
         {
             return prepared;
@@ -24,6 +32,7 @@ class Renderer
 
     private:
         bool prepared{false};
+        bool mouseMoved{true};
         unsigned int shaderProgram;
         unsigned int texture;
         glm::uvec2 initialResolution{1280, 720};
