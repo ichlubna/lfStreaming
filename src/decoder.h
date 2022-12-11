@@ -90,6 +90,7 @@ class Decoder
                 CUdeviceptr frame;
                 size_t pitch;
         };
+        template<bool measure=false>
         InterpolationResult decodeAndInterpolate(glm::vec2 position);
         void prepareFrames();
         std::vector<void *> getIntermediatePtrs();

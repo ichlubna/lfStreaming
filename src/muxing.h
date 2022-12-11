@@ -7,8 +7,8 @@
 class Muxing
 {
     public:
-        static const std::set<std::filesystem::path> listPath(std::string path);
-        static glm::uvec2 parseFilename(std::string name);
+        [[nodiscard]] static const std::set<std::filesystem::path> listPath(std::string path);
+        [[nodiscard]] static glm::uvec2 parseFilename(std::string name);
 
         class EncodedData
         {
@@ -22,23 +22,23 @@ class Muxing
                 std::vector<uint32_t> offsets;
                 std::vector<uint32_t> references;
                 static constexpr size_t HEADER_VALUES_COUNT{6};
-                glm::uvec2 resolution()
+                [[nodiscard]] glm::uvec2 resolution() const
                 {
                     return {header[0], header[1]};
                 }
-                glm::uvec2 colsRows()
+                [[nodiscard]] glm::uvec2 colsRows() const
                 {
                     return {header[2], header[3]};
                 }
-                Format format()
+                [[nodiscard]]  Format format() const
                 {
                     return static_cast<Format>(header[4]);
                 }
-                size_t timeFrameCount()
+                [[nodiscard]] size_t timeFrameCount() const
                 {
                     return header[5];
                 }
-                size_t gridSize()
+                [[nodiscard]] size_t gridSize() const
                 {
                     return colsRows().x * colsRows().y;
                 }
@@ -57,14 +57,14 @@ class Muxing
                     data.initHeader(resolution, colsRows, format, timeFrameCount);
                     initialized = true;
                 };
-                bool isInitialized()
+                [[nodiscard]] bool isInitialized()
                 {
                     return initialized;
                 }
                 void endTimeFrame(glm::uvec2 referenceCoords);
 
             private:
-                size_t getLinearIndex(glm::ivec3 colsRowsTime);
+                [[nodiscard]] size_t getLinearIndex(glm::ivec3 colsRowsTime) const;
                 void addPacket(const std::vector<uint8_t> *packetData);
                 EncodedData data;
                 bool initialized{false};
@@ -81,17 +81,17 @@ class Muxing
                         size_t size;
                 };
                 Demuxer(std::string filePath);
-                glm::uvec2 getResolution()
+                [[nodiscard]] glm::uvec2 getResolution()
                 {
                     return data.resolution();
                 }
-                const PacketPointer getPacket(glm::ivec3 colsRowsTime);
-                const PacketPointer getReferencePacket(int time);
+                [[nodiscard]] const PacketPointer getPacket(glm::ivec3 colsRowsTime) const;
+                [[nodiscard]] const PacketPointer getReferencePacket(int time) const;
                 EncodedData data;
 
             private:
-                std::vector<uint8_t> copyPacket(glm::ivec3 colsRowsTime);
-                size_t getLinearIndex(glm::ivec3 colsRowsTime);
+                [[nodiscard]] std::vector<uint8_t> copyPacket(glm::ivec3 colsRowsTime) const;
+                [[nodiscard]] size_t getLinearIndex(glm::ivec3 colsRowsTime) const;
         };
 
     private:

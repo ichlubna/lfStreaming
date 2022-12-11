@@ -5,6 +5,7 @@
 #include "decoder.h"
 #include "exporter.h"
 #include "kernels.h"
+#include "timer.h"
 
 Decoder::Decoder(std::string inputPath, size_t startFrame) : renderer{std::make_unique<Renderer>()}, videoDecoder{std::make_unique<VideoDecoder>(inputPath)}, interop{std::make_unique<CudaGLInterop>()}
 {
@@ -144,8 +145,12 @@ std::vector<void *> Decoder::getIntermediatePtrs()
     return ptrs;
 }
 
+template<bool measure>
 Decoder::InterpolationResult Decoder::decodeAndInterpolate(glm::vec2 position)
 {
+    if constexpr (measure)
+        Timer<true,true> timer;
+
     videoDecoder->clearBuffer();
     framePicker.compute(videoDecoder->getColsRows(), position);
     auto guide = framePicker.guide(interpolationOrder);

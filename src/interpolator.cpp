@@ -34,7 +34,7 @@ void Interpolator::loadLibrary()
     NvOFFRUCDestroy = (PtrToFuncNvOFFRUCDestroy)getProc(library, DestroyProcName);
 }
 
-void Interpolator::registerResources(std::vector<void *> *resources)
+void Interpolator::registerResources(const std::vector<void *> *resources)
 {
     NvOFFRUC_REGISTER_RESOURCE_PARAM registerParam{};
     for(size_t i = 0; i < resources->size(); i++)
@@ -45,7 +45,7 @@ void Interpolator::registerResources(std::vector<void *> *resources)
         throw std::runtime_error("Cannot register resources.");
 }
 
-void Interpolator::unregisterResources(std::vector<void *> *resources)
+void Interpolator::unregisterResources(const std::vector<void *> *resources)
 {
     NvOFFRUC_UNREGISTER_RESOURCE_PARAM unregisterParam{};
     for(size_t i = 0; i < resources->size(); i++)

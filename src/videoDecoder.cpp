@@ -88,7 +88,6 @@ int VideoDecoder::decodePicture(CUVIDPICPARAMS *picParams)
 {
     if(cuvidDecodePicture(decoder, picParams) != CUDA_SUCCESS)
         throw std::runtime_error("Cannot decode picture.");
-
     CUVIDPROCPARAMS videoProcessingParameters{};
     videoProcessingParameters.progressive_frame = 1;
     videoProcessingParameters.output_stream = 0;
@@ -123,7 +122,7 @@ int VideoDecoder::displayPicture([[maybe_unused]] CUVIDPARSERDISPINFO *dispInfo)
     return DECODER_CALLBACK_SUCCESS;
 }
 
-bool VideoDecoder::allFramesReady()
+bool VideoDecoder::allFramesReady() const
 {
     return frames.size() > FRAME_COUNT;
     /*    bool ready{true};
@@ -139,11 +138,11 @@ void VideoDecoder::clearBuffer()
     initFrame();
 }
 
-std::vector<void *> VideoDecoder::getFramePointers()
+const std::vector<void*> VideoDecoder::getFramePointers() const
 {
     std::vector<void *> ptrs(frames.size());
     for(size_t i = 0; i < frames.size(); i++)
-        ptrs[i] = reinterpret_cast<void *>(&(frames[i].frame));
+        ptrs[i] = const_cast<void*>(reinterpret_cast<const void*>(&(frames[i].frame)));
     return ptrs;
 }
 

@@ -13,11 +13,11 @@ class VideoDecoder
         ~VideoDecoder();
         void seek(size_t time);
         void initFrame();
-        glm::ivec2 getResolution()
+        [[nodiscard]]glm::ivec2 getResolution() const
         {
             return demuxer->data.resolution();
         }
-        glm::ivec2 getColsRows()
+        [[nodiscard]] glm::ivec2 getColsRows() const
         {
             return demuxer->data.colsRows();
         }
@@ -27,7 +27,7 @@ class VideoDecoder
         }
         void decodeFrame(glm::ivec2 position);
         void flush();
-        bool allFramesReady();
+        [[nodiscard]] bool allFramesReady() const;
         void clearBuffer();
         class DecodedFrame
         {
@@ -43,11 +43,11 @@ class VideoDecoder
                         cuvidUnmapVideoFrame(decoder, frame);
                 }
         };
-        std::vector<DecodedFrame> *getFrames()
+        [[nodiscard]] const std::vector<DecodedFrame> *getFrames() const
         {
             return &frames;
         };
-        std::vector<void *> getFramePointers();
+        [[nodiscard]] const std::vector<void*> getFramePointers() const;
 
     private:
         static constexpr int DECODED_COUNT{8};

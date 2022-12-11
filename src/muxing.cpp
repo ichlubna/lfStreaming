@@ -24,7 +24,7 @@ glm::uvec2 Muxing::parseFilename(std::string name)
     return {stoi(row), stoi(col)};
 }
 
-size_t Muxing::Muxer::getLinearIndex(glm::ivec3 colsRowsTime)
+size_t Muxing::Muxer::getLinearIndex(glm::ivec3 colsRowsTime) const
 {
     return data.gridSize() * colsRowsTime.z + colsRowsTime.y * data.colsRows().x + colsRowsTime.x;
 }
@@ -59,6 +59,8 @@ void Muxing::Muxer::save(std::string filePath)
     fos.write(reinterpret_cast<const char *>(data.offsets.data()), data.offsets.size()*BYTE_COUNT);
     fos.write(reinterpret_cast<const char *>(data.references.data()), data.references.size()*BYTE_COUNT);
     fos.write(reinterpret_cast<const char *>(data.packets.data()), data.packets.size());
+    for(auto o : data.offsets) std::cerr << o << " ";
+    std::cerr << std::endl;
     //std::cerr << data.header.size() << " " << data.offsets.size() << " " << data.references.size() << " " << data.packets.size() << std::endl;
     fos.close();
 }
@@ -97,12 +99,12 @@ Muxing::Demuxer::Demuxer(std::string filePath)
     //std::cerr << EncodedData::HEADER_VALUES_COUNT << " " << 1+data.gridSize()*data.timeFrameCount() << " " << data.timeFrameCount() << " " << data.packets.size();
 }
 
-size_t Muxing::Demuxer::getLinearIndex(glm::ivec3 colsRowsTime)
+size_t Muxing::Demuxer::getLinearIndex(glm::ivec3 colsRowsTime) const
 {
     return data.gridSize() * colsRowsTime.z + colsRowsTime.x * data.colsRows().y + colsRowsTime.y;
 }
 
-std::vector<uint8_t> Muxing::Demuxer::copyPacket(glm::ivec3 colsRowsTime)
+std::vector<uint8_t> Muxing::Demuxer::copyPacket(glm::ivec3 colsRowsTime) const
 {
     size_t index = getLinearIndex(colsRowsTime);
     size_t start = data.offsets[index];
@@ -110,7 +112,7 @@ std::vector<uint8_t> Muxing::Demuxer::copyPacket(glm::ivec3 colsRowsTime)
     return std::vector<uint8_t>(data.packets.begin() + start, data.packets.begin() + end);
 }
 
-const Muxing::Demuxer::PacketPointer Muxing::Demuxer::getReferencePacket(int time)
+const Muxing::Demuxer::PacketPointer Muxing::Demuxer::getReferencePacket(int time) const
 {
     PacketPointer packetPointer;
     size_t referenceID = data.references[time];
@@ -119,7 +121,7 @@ const Muxing::Demuxer::PacketPointer Muxing::Demuxer::getReferencePacket(int tim
     return packetPointer;
 }
 
-const Muxing::Demuxer::PacketPointer Muxing::Demuxer::getPacket(glm::ivec3 colsRowsTime)
+const Muxing::Demuxer::PacketPointer Muxing::Demuxer::getPacket(glm::ivec3 colsRowsTime) const
 {
     PacketPointer packetPointer;
     size_t index = getLinearIndex(colsRowsTime);
