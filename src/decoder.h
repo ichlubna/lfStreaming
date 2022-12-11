@@ -38,6 +38,7 @@ class Decoder
                 enum Order {TOP_BOTTOM = 0, LEFT_RIGHT = 1, DIAGONAL = 2};
                 enum FramePosition {TOP_LEFT = 0, TOP_RIGHT = 1, BOTTOM_LEFT = 2, BOTTOM_RIGHT = 3};
                 const std::vector<FramePosition> orderIDs[3] {{TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT},
+//                const std::vector<FramePosition> orderIDs[3] {{TOP_LEFT, BOTTOM_LEFT, BOTTOM_RIGHT, TOP_RIGHT},
                     {TOP_LEFT, BOTTOM_LEFT, TOP_RIGHT, BOTTOM_RIGHT},
                     {TOP_LEFT, BOTTOM_RIGHT, TOP_RIGHT, BOTTOM_LEFT}
                 };
@@ -47,8 +48,8 @@ class Decoder
                 float interWeight(Order order) const
                 {
                     auto o = orderIDs[order];
-                    float first = frames[o[0]].weight+frames[o[1]].weight;
-                    float second = frames[o[2]].weight+frames[o[3]].weight;
+                    float first = frames[o[0]].weight + frames[o[1]].weight;
+                    float second = frames[o[2]].weight + frames[o[3]].weight;
                     return interWeightVal(first, second);
                 }
                 float interWeight(FramePosition first, FramePosition second) const
@@ -57,7 +58,7 @@ class Decoder
                 }
                 float interWeightVal(float first, float second) const
                 {
-                    return second / (first + second);
+                    return first / (first + second);
                 }
                 InterpolationInfo guide(Order order);
         };

@@ -45,7 +45,7 @@ void Renderer::createWindow()
         auto *renderer = reinterpret_cast<Renderer *>(glfwGetWindowUserPointer(window));
         int width, height;
         glfwGetWindowSize(window, &width, &height);
-        renderer->setMousePosition({xPos/width, yPos/height});
+        renderer->setMousePosition({xPos / width, yPos / height});
     });
     glfwSetKeyCallback(window, []([[maybe_unused]]GLFWwindow * window, int key, [[maybe_unused]]int scancode, [[maybe_unused]]int action, [[maybe_unused]]int mods)
     {

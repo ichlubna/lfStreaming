@@ -99,7 +99,7 @@ Muxing::Demuxer::Demuxer(std::string filePath)
 
 size_t Muxing::Demuxer::getLinearIndex(glm::ivec3 colsRowsTime)
 {
-    return data.gridSize() * colsRowsTime.z + colsRowsTime.y * data.colsRows().x + colsRowsTime.x;
+    return data.gridSize() * colsRowsTime.z + colsRowsTime.x * data.colsRows().y + colsRowsTime.y;
 }
 
 std::vector<uint8_t> Muxing::Demuxer::copyPacket(glm::ivec3 colsRowsTime)

@@ -39,8 +39,7 @@ glm::vec2 Decoder::cameraPosition()
 {
     auto mouse = renderer->getMousePosition();
     constexpr float DELTA{0.0000001};
-    mouse.x=0;
-    return glm::clamp(mouse, {0+DELTA, 0+DELTA}, {1-DELTA, 1-DELTA});
+    return glm::clamp(mouse, {0 + DELTA, 0 + DELTA}, {1 - DELTA, 1 - DELTA});
 }
 
 void Decoder::decodeAndPlay()
@@ -87,7 +86,7 @@ std::vector<glm::vec2> Decoder::parseTrajectory(std::string textTrajectory) cons
 
 void Decoder::SelectedFrames::compute(glm::uvec2 gridSize, glm::vec2 position)
 {
-    glm::vec2 gridPosition{glm::vec2(gridSize - 1u)*position};
+    glm::vec2 gridPosition{glm::vec2(gridSize - 1u) *position};
     glm::ivec2 downCoords{glm::floor(gridPosition)};
     glm::ivec2 upCoords{glm::ceil(gridPosition)};
 
@@ -98,7 +97,7 @@ void Decoder::SelectedFrames::compute(glm::uvec2 gridSize, glm::vec2 position)
     currentCoords = {downCoords};
     weight = (1 - unitPos.x) * (1 - unitPos.y);
     frames[TOP_LEFT] = {currentCoords, weight};
-    
+
     currentCoords = {upCoords.x, downCoords.y};
     weight = unitPos.x * (1 - unitPos.y);
     frames[TOP_RIGHT] = {currentCoords, weight};
@@ -121,10 +120,6 @@ Decoder::SelectedFrames::InterpolationInfo Decoder::SelectedFrames::guide(Order 
     info.weights[0] = interWeight(selectedOrder[0], selectedOrder[1]);
     info.weights[1] = interWeight(selectedOrder[2], selectedOrder[3]);
     info.weights[2] = interWeight(order);
-    std::cerr << info.weights[0] << " " << info.weights[1] << " " << info.weights[2] << std::endl;
-    for(int i=0; i<4; i++)
-    std::cerr << info.positions[i].x << "-" << info.positions[i].y << " ";
-    std::cerr << std::endl;
     return info;
 }
 
@@ -152,12 +147,10 @@ std::vector<void *> Decoder::getIntermediatePtrs()
 Decoder::InterpolationResult Decoder::decodeAndInterpolate(glm::vec2 position)
 {
     videoDecoder->clearBuffer();
-    //TODO remove the seeking every time
-    videoDecoder->seek(0);
     framePicker.compute(videoDecoder->getColsRows(), position);
     auto guide = framePicker.guide(interpolationOrder);
     for(size_t i = 0; i < guide.FRAME_COUNT; i++)
-       videoDecoder->decodeFrame(guide.positions[i]);
+        videoDecoder->decodeFrame(guide.positions[i]);
     videoDecoder->flush();
     while(!videoDecoder->allFramesReady()) {}
 
@@ -167,7 +160,7 @@ Decoder::InterpolationResult Decoder::decodeAndInterpolate(glm::vec2 position)
 
     for(size_t i = 0; i < guide.WEIGHTS_COUNT; i++)
     {
-        size_t frameID = i * 2;
+        size_t frameID = 1 + i * 2;
         Interpolator::Pair pair;
         if(i != guide.WEIGHTS_COUNT - 1)
         {

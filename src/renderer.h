@@ -23,7 +23,7 @@ class Renderer
             mouseMoved = false;
             return move;
         }
-        
+
         bool ready()
         {
             return prepared;

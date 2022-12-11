@@ -12,6 +12,7 @@ class VideoDecoder
         VideoDecoder(std::string file);
         ~VideoDecoder();
         void seek(size_t time);
+        void initFrame();
         glm::ivec2 getResolution()
         {
             return demuxer->data.resolution();
@@ -39,9 +40,7 @@ class VideoDecoder
                 ~DecodedFrame()
                 {
                     if(frame != 0)
-                    {
                         cuvidUnmapVideoFrame(decoder, frame);
-                    }
                 }
         };
         std::vector<DecodedFrame> *getFrames()
@@ -66,8 +65,8 @@ class VideoDecoder
         void createParser();
         void decode(Muxing::Demuxer::PacketPointer packetPointer);
         void incrementTime();
-        void prepareFrame(int timestamp, int pictureID, CUVIDPROCPARAMS params);
-        std::vector<DecodedFrame>frames{FRAME_COUNT};
+        void prepareFrame(int pictureID, CUVIDPROCPARAMS params);
+        std::vector<DecodedFrame> frames;
         cudaVideoChromaFormat chromaFormat{cudaVideoChromaFormat_420};
         cudaVideoCodec getCodec();
         int videoSequence(CUVIDEOFORMAT *format);

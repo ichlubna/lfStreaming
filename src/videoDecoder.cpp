@@ -79,7 +79,7 @@ void VideoDecoder::createParser()
         throw std::runtime_error("Cannot create the parser.");
 }
 
-int VideoDecoder::videoSequence(CUVIDEOFORMAT *format)
+int VideoDecoder::videoSequence([[maybe_unused]] CUVIDEOFORMAT *format)
 {
     return DECODER_CALLBACK_SUCCESS;
 }
@@ -88,47 +88,55 @@ int VideoDecoder::decodePicture(CUVIDPICPARAMS *picParams)
 {
     if(cuvidDecodePicture(decoder, picParams) != CUDA_SUCCESS)
         throw std::runtime_error("Cannot decode picture.");
+
+    CUVIDPROCPARAMS videoProcessingParameters{};
+    videoProcessingParameters.progressive_frame = 1;
+    videoProcessingParameters.output_stream = 0;
+    prepareFrame(picParams->CurrPicIdx, videoProcessingParameters);
+
     return DECODER_CALLBACK_SUCCESS;
 }
 
-void VideoDecoder::prepareFrame(int timestamp, int pictureID, CUVIDPROCPARAMS params)
+void VideoDecoder::prepareFrame(int pictureID, CUVIDPROCPARAMS params)
 {
-    if(timestamp != 0)
-    { 
-        int finalID = (timestamp-1) % FRAME_COUNT;
-        frames[finalID] = DecodedFrame(decoder);
-        if(cuvidMapVideoFrame(decoder, pictureID, &(frames[finalID].frame),  &(frames[finalID].pitch), &params) != CUDA_SUCCESS)
-            throw std::runtime_error("Cannot map frame.");
-    }
-}
-
-int VideoDecoder::displayPicture(CUVIDPARSERDISPINFO *dispInfo)
-{
-    CUVIDPROCPARAMS videoProcessingParameters{};
-    videoProcessingParameters.output_stream = 0;
     CUVIDGETDECODESTATUS status{};
-    if(cuvidGetDecodeStatus(decoder, dispInfo->picture_index, &status) != CUDA_SUCCESS)
+    if(cuvidGetDecodeStatus(decoder, pictureID, &status) != CUDA_SUCCESS)
         throw std::runtime_error("Cannot check decoding status.");
     if(status.decodeStatus == cuvidDecodeStatus_Error || status.decodeStatus == cuvidDecodeStatus_Error_Concealed)
         throw std::runtime_error("Cannot get decoded frame.");
 
+    frames.emplace_back();
+    frames.back().decoder = decoder;
+    if(cuvidMapVideoFrame(decoder, pictureID, &(frames.back().frame),  &(frames.back().pitch), &params) != CUDA_SUCCESS)
+        throw std::runtime_error("Cannot map frame.");
+}
 
-    prepareFrame(dispInfo->timestamp, dispInfo->picture_index, videoProcessingParameters);
+int VideoDecoder::displayPicture([[maybe_unused]] CUVIDPARSERDISPINFO *dispInfo)
+{
+    //The timestamps were not correct here so I fetch the frames in decode callback
+
+    /*CUVIDPROCPARAMS videoProcessingParameters{};
+    videoProcessingParameters.progressive_frame = dispInfo->progressive_frame;
+    videoProcessingParameters.output_stream = 0;
+    */
+//    prepareFrame(dispInfo->timestamp, dispInfo->picture_index, videoProcessingParameters);
     return DECODER_CALLBACK_SUCCESS;
 }
 
 bool VideoDecoder::allFramesReady()
 {
-    bool ready{true};
-    for(auto const &frame : frames)
-        ready = ready && (frame.frame != 0);
-    return ready;
+    return frames.size() > FRAME_COUNT;
+    /*    bool ready{true};
+        for(auto const &frame : frames)
+            ready = ready && (frame.frame != 0);
+        return ready;*/
 }
-        
+
 void VideoDecoder::clearBuffer()
 {
     frames.clear();
-    frames.resize(FRAME_COUNT);
+    frames.reserve(FRAME_COUNT + 5);
+    initFrame();
 }
 
 std::vector<void *> VideoDecoder::getFramePointers()
@@ -151,6 +159,10 @@ void VideoDecoder::seek(size_t newTime)
 {
     time = newTime;
     decodedNumber = 0;
+}
+
+void VideoDecoder::initFrame()
+{
     decode(demuxer->getReferencePacket(time));
 }
 
@@ -170,9 +182,9 @@ void VideoDecoder::decode(Muxing::Demuxer::PacketPointer packetPointer)
     CUVIDSOURCEDATAPACKET packet{};
     packet.payload = packetPointer.data;
     packet.payload_size = packetPointer.size;
-    packet.flags = CUVID_PKT_TIMESTAMP;
-    packet.timestamp = decodedNumber;
-    decodedNumber++;
+    //packet.flags = CUVID_PKT_TIMESTAMP;
+    //packet.timestamp = decodedNumber;
+    //decodedNumber++;
     if(packetPointer.size == 0)
         packet.flags |= CUVID_PKT_ENDOFSTREAM;
     if(cuvidParseVideoData(parser, &packet) != CUDA_SUCCESS)
