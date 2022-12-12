@@ -156,7 +156,6 @@ Decoder::InterpolationResult Decoder::decodeAndInterpolate(glm::vec2 position)
     auto guide = framePicker.guide(interpolationOrder);
     for(size_t i = 0; i < guide.FRAME_COUNT; i++)
         videoDecoder->decodeFrame(guide.positions[i]);
-    videoDecoder->flush();
     while(!videoDecoder->allFramesReady()) {}
 
     auto framePtrs = videoDecoder->getFramePointers();
@@ -165,7 +164,7 @@ Decoder::InterpolationResult Decoder::decodeAndInterpolate(glm::vec2 position)
 
     for(size_t i = 0; i < guide.WEIGHTS_COUNT; i++)
     {
-        size_t frameID = 1 + i * 2;
+        size_t frameID = i * 2;
         Interpolator::Pair pair;
         if(i != guide.WEIGHTS_COUNT - 1)
         {

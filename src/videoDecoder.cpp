@@ -124,7 +124,7 @@ int VideoDecoder::displayPicture([[maybe_unused]] CUVIDPARSERDISPINFO *dispInfo)
 
 bool VideoDecoder::allFramesReady() const
 {
-    return frames.size() > FRAME_COUNT;
+    return frames.size() >= FRAME_COUNT;
     /*    bool ready{true};
         for(auto const &frame : frames)
             ready = ready && (frame.frame != 0);
@@ -134,8 +134,8 @@ bool VideoDecoder::allFramesReady() const
 void VideoDecoder::clearBuffer()
 {
     frames.clear();
-    frames.reserve(FRAME_COUNT + 5);
-    initFrame();
+    frames.reserve(FRAME_COUNT);
+    //initFrame();
 }
 
 const std::vector<void*> VideoDecoder::getFramePointers() const
@@ -157,7 +157,9 @@ void VideoDecoder::incrementTime()
 void VideoDecoder::seek(size_t newTime)
 {
     time = newTime;
-    decodedNumber = 0;
+    //decodedNumber = 0;
+    initFrame();
+    clearBuffer();
 }
 
 void VideoDecoder::initFrame()
@@ -181,6 +183,7 @@ void VideoDecoder::decode(Muxing::Demuxer::PacketPointer packetPointer)
     CUVIDSOURCEDATAPACKET packet{};
     packet.payload = packetPointer.data;
     packet.payload_size = packetPointer.size;
+    packet.flags = CUVID_PKT_ENDOFPICTURE;
     //packet.flags = CUVID_PKT_TIMESTAMP;
     //packet.timestamp = decodedNumber;
     //decodedNumber++;
