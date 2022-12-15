@@ -5,7 +5,6 @@
 #include "decoder.h"
 #include "exporter.h"
 #include "kernels.h"
-#include "timer.h"
 
 Decoder::Decoder(std::string inputPath, size_t startFrame) : renderer{std::make_unique<Renderer>()}, videoDecoder{std::make_unique<VideoDecoder>(inputPath)}, interop{std::make_unique<CudaGLInterop>()}
 {
@@ -149,7 +148,10 @@ template<bool measure>
 Decoder::InterpolationResult Decoder::decodeAndInterpolate(glm::vec2 position)
 {
     if constexpr (measure)
-        Timer<true,true> timer;
+    {
+        std::cout << "Decoding the frames..." << std::endl;
+        timer.start();
+    }
 
     videoDecoder->clearBuffer();
     framePicker.compute(videoDecoder->getColsRows(), position);
@@ -161,6 +163,17 @@ Decoder::InterpolationResult Decoder::decodeAndInterpolate(glm::vec2 position)
     auto framePtrs = videoDecoder->getFramePointers();
     auto frames = videoDecoder->getFrames();
     interpolator->registerResources(&framePtrs);
+
+    if constexpr (measure)
+    {
+        timer.stop().printElapsed();
+    }
+    
+    if constexpr (measure)
+    {
+        std::cout << "Interpolating new view..." << std::endl;
+        timer.start();
+    }
 
     for(size_t i = 0; i < guide.WEIGHTS_COUNT; i++)
     {
@@ -183,6 +196,11 @@ Decoder::InterpolationResult Decoder::decodeAndInterpolate(glm::vec2 position)
         interpolator->interpolate({pair});
     }
 
+    if constexpr (measure)
+    {
+        timer.stop().printElapsed();
+    }
+
     interpolator->unregisterResources(&framePtrs);
     auto result = intermediateFrames[guide.WEIGHTS_COUNT - 1];
     return {result.frame, result.pitch};
@@ -197,7 +215,7 @@ void Decoder::decodeAndStore(std::string trajectory, std::string outputPath)
     {
         std::cout << "____________________________" << std::endl;
         std::cout << "Processing view " << position.x << "_" << position.y << std::endl;
-        auto result = decodeAndInterpolate(position);
+        auto result = decodeAndInterpolate<true>(position);
         std::string fileName{std::filesystem::path(outputPath) / (std::to_string(position.x) + "_" + std::to_string(position.y) + ".ppm")};
         std::cout << "Storing result to " + fileName << std::endl;
         exporter.exportImage(result.frame, result.pitch, videoDecoder->getResolution(), fileName);

@@ -5,6 +5,7 @@
 #include "videoDecoder.h"
 #include "interpolator.h"
 #include "cudaGLInterop.h"
+#include "timer.h"
 
 class Decoder
 {
@@ -95,4 +96,5 @@ class Decoder
         void prepareFrames();
         std::vector<void *> getIntermediatePtrs();
         glm::vec2 cameraPosition();
+        Timer<true,true> timer;
 };

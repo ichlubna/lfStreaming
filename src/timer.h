@@ -1,4 +1,6 @@
 #include <chrono>
+#include <iostream>
+#include <string>
 #include <cuda_runtime.h>
 
 template<bool CPU, bool GPU>
@@ -7,13 +9,32 @@ class Timer
     public:
     Timer()
     {
-        start();
     }
     
+    template<bool CPUTime, bool GPUTime>
     class Times
     {
         public:
         float gpuTime, cpuTime;
+        void print(std::string type, float value) const
+        {
+            std::cout << type << " elapsed time: " << value << " ms" << std::endl;
+        }
+        void printElapsedGPU() const
+        {
+            print("GPU", gpuTime);
+        }
+        void printElapsedCPU() const
+        {
+            print("CPU", cpuTime);
+        }
+        void printElapsed() const
+        {
+            if constexpr (CPUTime)
+                printElapsedCPU();
+            if constexpr (CPUTime)
+                printElapsedGPU();
+        }
     }; 
     
     void start()
@@ -24,13 +45,14 @@ class Timer
             startGPU();
     } 
  
-    [[nodiscard]] const Times stop()
+    [[nodiscard]] const Times<CPU, GPU> stop()
     {
-        Times times;
+        Times<CPU, GPU> times;
         if constexpr (CPU)
             times.cpuTime = stopCPU();    
         if constexpr (GPU)
             times.gpuTime = stopGPU();
+        return times;
     } 
     
     private:
