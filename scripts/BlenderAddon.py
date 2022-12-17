@@ -30,15 +30,22 @@ class LFPanel(bpy.types.Panel):
         col.prop(context.scene, "LFAnimation")
         col.operator("lf.render", text="Render")
         col.operator("lf.preview", text="Preview")
-        col.label(text="Running...")
-        col.prop(context.scene, "LFProgress")
+        if context.scene.LFRunning:
+            col.label(text="Running...")
+            row = self.layout.row()
+            row.prop(context.scene, "LFProgress")
+            row.enabled = False
 
 class ProgressBar(bpy.types.Operator):
     """Prints the progress"""
     bl_idname = "wm.progressbar"
     bl_label = "Progress bar"
     timer = None
+    timerPeriod = 0.65
     totalCount = 0
+    totalCountInTime = 0
+    frameCount = 1
+    currentFrame = 0
     borderIDs = [0,0]
     originalCameraLocation = None
     
@@ -55,17 +62,35 @@ class ProgressBar(bpy.types.Operator):
         context.scene.LFCurrentView[1] = 0
         context.scene.LFCurrentView[2] = 0
         self.totalCount = context.scene.LFGridSize[0]*context.scene.LFGridSize[1]
+        self.totalCountInTime = copy.deepcopy(self.totalCount)      
+        self.currentFrame = bpy.context.scene.frame_current 
+        if context.scene.LFAnimation:
+            self.frameCount = bpy.context.scene.frame_end - bpy.context.scene.frame_start + 1
+            self.totalCountInTime *= self.frameCount
+            print(self.totalCountInTime)
+            self.currentFrame = bpy.context.scene.frame_start
+    
+    def updateFrame(self, context):
+        if (context.scene.LFCurrentView[2] % self.totalCount) == 0:
+            currentFrame = context.scene.LFCurrentView[2] // self.totalCount
+            currentFrame += bpy.context.scene.frame_start
+            self.restoreCamera()
+            context.scene.frame_set(currentFrame)
+            self.backupCamera()
     
     def checkAndUpdateCurrentView(self, context):
+        if context.scene.LFAnimation:
+            self.updateFrame(context)
         context.scene.LFCurrentView[2] += 1    
-        if context.scene.LFCurrentView[2] >= self.totalCount:
+        if context.scene.LFCurrentView[2] >= self.totalCountInTime:
             return False
-        context.scene.LFCurrentView[0] = context.scene.LFCurrentView[2] % context.scene.LFGridSize[0] 
-        context.scene.LFCurrentView[1] = context.scene.LFCurrentView[2] // context.scene.LFGridSize[0]
+        linear = context.scene.LFCurrentView[2] % self.totalCount
+        context.scene.LFCurrentView[0] = linear % context.scene.LFGridSize[0] 
+        context.scene.LFCurrentView[1] = linear // context.scene.LFGridSize[0]
         return True    
     
     def updateProgress(self, context):
-        context.scene.LFProgress = context.scene.LFCurrentView[2]/(self.totalCount)
+        context.scene.LFProgress = (context.scene.LFCurrentView[2]/(self.totalCountInTime))*100
 
     def modal(self, context, event):
         if event.type in {'ESC'} or context.scene.LFShouldEnd:
@@ -73,10 +98,12 @@ class ProgressBar(bpy.types.Operator):
             return {'CANCELLED'}
 
         if event.type == 'TIMER':            
-            if bpy.types.Scene.LFCurrentTaskFinished:
+            if context.scene.LFCurrentTaskFinished:
                 self.restoreCamera()
-                bpy.ops.lf.preview()
-                print(bpy.context.scene.camera.location)
+                if context.scene.LFIsPreview:
+                    bpy.ops.lf.preview()
+                else:
+                    bpy.ops.lf.render()
                 notFinished = self.checkAndUpdateCurrentView(context)
                 if not notFinished:
                     self.deferredCancel(context)
@@ -86,20 +113,23 @@ class ProgressBar(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
     def execute(self, context):
+        context.scene.LFProgress = 0.0
+        context.scene.LFRunning = True
         context.scene.LFShouldEnd = False
         self.backupCamera()
         self.initVars(context)
         wm = context.window_manager
-        self.timer = wm.event_timer_add(0.5, window=context.window)
+        self.timer = wm.event_timer_add(self.timerPeriod, window=context.window)
         wm.modal_handler_add(self)
         return {'RUNNING_MODAL'}
 
     def deferredCancel(self, context):
         context.scene.LFShouldEnd = True
-        context.scene.LFProgress = 1.0
+        context.scene.LFProgress = 100.0
 
     def cancel(self, context):
         self.restoreCamera()
+        context.scene.LFRunning = False
         wm = context.window_manager
         wm.event_timer_remove(self.timer)
 
@@ -133,9 +163,13 @@ class CameraTrajectory():
         vectors.right = vectors.down.cross(vectors.direction)
         return vectors
     
-    def currentPosition(self, context):
+    def getCurrentCoords(self, context):
         x = context.scene.LFCurrentView[0]
         y = context.scene.LFCurrentView[1]
+        return x,y
+    
+    def currentPosition(self, context):
+        x, y = self.getCurrentCoords(context)
         step = mathutils.Vector(context.scene.LFStep)
         gridSize = mathutils.Vector(context.scene.LFGridSize)
         camera = self.getCameraVectors()
@@ -149,7 +183,6 @@ class CameraTrajectory():
         for x in range(int(gridSize.x)):
             for y in range(int(gridSize.y)):
                 trajectory[x][y] = camera.offsetPosition(step, mathutils.Vector((x,y)), gridSize)
-        print(trajectory)
         return trajectory
 
 class LFRender(bpy.types.Operator, CameraTrajectory):
@@ -160,31 +193,22 @@ class LFRender(bpy.types.Operator, CameraTrajectory):
     def execute(self, context):
         renderInfo = bpy.context.scene.render
         originalPath = copy.deepcopy(renderInfo.filepath)
-        trajectory = self.createTrajectory(context)
-        camera = bpy.context.scene.camera 
-        originalCameraLocation = copy.deepcopy(camera.location)        
-        gridSize = mathutils.Vector(context.scene.LFGridSize)
-        
-        frameRange = range(bpy.context.scene.frame_current, bpy.context.scene.frame_current+1)
-        if context.scene.LFAnimation:
-            frameRange = range(bpy.context.scene.frame_start, bpy.context.scene.frame_end+1)
-            
-        for frameID in frameRange:
-            bpy.context.scene.frame_set(frameID)
-            #TODO dangerous
-            bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
-            for x in range(int(gridSize.x)):
-                for y in range(int(gridSize.y)):    
-                    filename = os.path.join(str(frameID), str(y)+"_"+str(x))
-                    renderInfo.filepath = os.path.join(originalPath, filename)
-                    camera.location = trajectory[x][y]
-                    bpy.ops.render.render( write_still=True )  
+        camera = bpy.context.scene.camera      
+        gridSize = mathutils.Vector(context.scene.LFGridSize)    
+ 
+        x, y = self.getCurrentCoords(context)
+        frameID = bpy.context.scene.frame_current
+        filename = os.path.join(str(frameID), str(y)+"_"+str(x))
+        renderInfo.filepath = os.path.join(originalPath, filename)
+        camera.location = self.currentPosition(context)
+        bpy.ops.render.render(write_still=True)  
         
         renderInfo.filepath = originalPath 
-        camera.location = originalCameraLocation
+        return {"FINISHED"}
 
     def invoke(self, context, event):
-        self.execute(context)
+        context.scene.LFIsPreview = False
+        bpy.ops.wm.progressbar()
         return {"FINISHED"}
     
 class LFPreview(bpy.types.Operator, CameraTrajectory):
@@ -194,18 +218,16 @@ class LFPreview(bpy.types.Operator, CameraTrajectory):
 
 
     def execute(self, context):
-        bpy.types.Scene.LFCurrentTaskFinished = False    
+        context.scene.LFCurrentTaskFinished = False    
         camera = bpy.context.scene.camera   
         camera.location = self.currentPosition(context)
-        bpy.types.Scene.LFCurrentTaskFinished = True
+        context.scene.LFCurrentTaskFinished = True
         return {"FINISHED"}
 
     def invoke(self, context, event):
-        print(self.createTrajectory(context))
-        bpy.ops.wm.progressbar()
-        #self.animateCamera(context)
-        
-        
+        #print(self.createTrajectory(context))
+        context.scene.LFIsPreview = True
+        bpy.ops.wm.progressbar()        
         return {"FINISHED"}
 
 def register():
@@ -216,10 +238,13 @@ def register():
     bpy.types.Scene.LFStep = bpy.props.FloatVectorProperty(name="Step", size=2, description="The distance between cameras", min=0, default=(1.0,1.0), subtype="XYZ")
     bpy.types.Scene.LFGridSize = bpy.props.IntVectorProperty(name="Grid size", size=2, description="The total number of the views", min=2, default=(8,8), subtype="XYZ")
     bpy.types.Scene.LFAnimation = bpy.props.BoolProperty(name="Render animation", description="Will render all active frames as animation", default=False)
-    bpy.types.Scene.LFProgress = bpy.props.FloatProperty(name="Progress", description="Progress bar", default=0.0)
+    bpy.types.Scene.LFProgress = bpy.props.FloatProperty(name="Progress", description="Progress bar", subtype="PERCENTAGE",soft_min=0, soft_max=100, default=0.0)
     bpy.types.Scene.LFCurrentView = bpy.props.IntVectorProperty(name="Current view", size=3, description="The currenty processed view - XY and third is linear ID", default=(0,0,0))
     bpy.types.Scene.LFCurrentTaskFinished = bpy.props.BoolProperty(name="Current view finished", description="Indicates that the current view was processed", default=True)
     bpy.types.Scene.LFShouldEnd = bpy.props.BoolProperty(name="Deffered ending", description="Is set to true in the last view to show last progress", default=False)
+    bpy.types.Scene.LFRunning = bpy.props.BoolProperty(name="Running", description="Indicates that the rendering or previewing is in progress", default=False)
+    bpy.types.Scene.LFIsPreview = bpy.props.BoolProperty(name="Is preview", description="Switch between preview and render", default=False)
+    
     
 def unregister():
     bpy.utils.unregister_class(ProgressBar)
