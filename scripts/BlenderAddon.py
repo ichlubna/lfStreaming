@@ -30,6 +30,9 @@ class LFPanel(bpy.types.Panel):
         col.prop(context.scene, "LFAnimation")
         col.operator("lf.render", text="Render")
         col.operator("lf.preview", text="Preview")
+        
+        if context.scene.camera == None:
+            col.label(text="No active camera set!")
         if context.scene.LFRunning:
             col.label(text="Running...")
             row = self.layout.row()
@@ -189,11 +192,33 @@ class LFRender(bpy.types.Operator, CameraTrajectory):
     """ Renders the LF structure """
     bl_idname = "lf.render"
     bl_label = "Render"
+    
+    originalCamera = None
+
+    def duplicateCamera(self, context):
+        for obj in bpy.context.selected_objects:
+            obj.select_set(False)          
+        camera = context.scene.camera
+        camera.select_set(True)
+        self.originalCamera = camera
+        bpy.ops.object.duplicate(linked=False)
+        self.originalCamera.select_set(False)
+        newCamera = bpy.context.selected_objects[0]
+        print(newCamera.name)
+        if newCamera.animation_data.action != None:
+            newCamera.animation_data.action = None
+        context.scene.camera = newCamera
+        return newCamera  
+    
+    def restoreCamera(self, context):
+        bpy.ops.object.delete() 
+        context.scene.camera = self.originalCamera
 
     def execute(self, context):
         renderInfo = bpy.context.scene.render
         originalPath = copy.deepcopy(renderInfo.filepath)
-        camera = bpy.context.scene.camera      
+        camera = self.duplicateCamera(context)    
+        print(camera.name)
         gridSize = mathutils.Vector(context.scene.LFGridSize)    
  
         x, y = self.getCurrentCoords(context)
@@ -203,6 +228,7 @@ class LFRender(bpy.types.Operator, CameraTrajectory):
         camera.location = self.currentPosition(context)
         bpy.ops.render.render(write_still=True)  
         
+        self.restoreCamera(context)
         renderInfo.filepath = originalPath 
         return {"FINISHED"}
 
@@ -214,12 +240,11 @@ class LFRender(bpy.types.Operator, CameraTrajectory):
 class LFPreview(bpy.types.Operator, CameraTrajectory):
     """ Animated the camera motion in the grid """
     bl_idname = "lf.preview"
-    bl_label = "Render"
-
+    bl_label = "Render" 
 
     def execute(self, context):
         context.scene.LFCurrentTaskFinished = False    
-        camera = bpy.context.scene.camera   
+        camera = context.scene.camera
         camera.location = self.currentPosition(context)
         context.scene.LFCurrentTaskFinished = True
         return {"FINISHED"}
