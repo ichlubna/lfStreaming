@@ -139,17 +139,23 @@ class Progress(bpy.types.Operator, CameraManager):
     frameCount = 1
     currentFrame = 0
         
+    def initPadding(self, context):
+        context.scene.LFIndexNamePadding[0] = len(str(context.scene.LFGridSize[0]))
+        context.scene.LFIndexNamePadding[1] = len(str(context.scene.LFGridSize[0]))
+        context.scene.LFIndexNamePadding[2] = len(str(context.scene.frame_end))
+        
     def initVars(self, context): 
         context.scene.LFCurrentView[0] = 0
         context.scene.LFCurrentView[1] = 0
         context.scene.LFCurrentView[2] = 0
         self.totalCount = context.scene.LFGridSize[0]*context.scene.LFGridSize[1]
         self.totalCountInTime = copy.deepcopy(self.totalCount)      
-        self.currentFrame = bpy.context.scene.frame_current 
+        self.currentFrame = context.scene.frame_current 
         if context.scene.LFAnimation:
-            self.frameCount = bpy.context.scene.frame_end - bpy.context.scene.frame_start + 1
+            self.frameCount = context.scene.frame_end - context.scene.frame_start + 1
             self.totalCountInTime *= self.frameCount
-            self.currentFrame = bpy.context.scene.frame_start        
+            self.currentFrame = context.scene.frame_start
+        self.initPadding(context) 
     
     def reInitCamera(self, context):
         self.restoreCamera(context)
@@ -231,7 +237,8 @@ class LFRender(bpy.types.Operator, CameraTrajectory):
  
         x, y = self.getCurrentCoords(context)
         frameID = bpy.context.scene.frame_current
-        filename = os.path.join(str(frameID), str(y)+"_"+str(x))
+        pad = context.scene.LFIndexNamePadding 
+        filename = os.path.join(str(frameID).zfill(pad[2]), str(y).zfill(pad[1])+"_"+str(x).zfill(pad[0]))
         renderInfo.filepath = os.path.join(originalPath, filename)
         bpy.ops.render.render(write_still=True)  
         
@@ -274,6 +281,7 @@ def register():
     bpy.types.Scene.LFShouldEnd = bpy.props.BoolProperty(name="Deffered ending", description="Is set to true in the last view to show last progress", default=False)
     bpy.types.Scene.LFRunning = bpy.props.BoolProperty(name="Running", description="Indicates that the rendering or previewing is in progress", default=False)
     bpy.types.Scene.LFIsPreview = bpy.props.BoolProperty(name="Is preview", description="Switch between preview and render", default=False)
+    bpy.types.Scene.LFIndexNamePadding = bpy.props.IntVectorProperty(name="Zero padding", size=3, description="Padding of the output indexing in filenames", default=(1,1,1))
     
     
 def unregister():
