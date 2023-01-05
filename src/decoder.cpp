@@ -2,6 +2,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include "decoder.h"
 #include "exporter.h"
 #include "kernels.h"
@@ -42,19 +43,32 @@ glm::vec2 Decoder::cameraPosition()
     return glm::clamp(mouse, {0 + DELTA, 0 + DELTA}, {1 - DELTA, 1 - DELTA});
 }
 
-void Decoder::decodeAndPlay()
+void Decoder::decodeAndPlay(float framerate)
 {
     auto resolution = videoDecoder->getResolution();
     renderer->init();
     interop->setTexture(renderer->getTexture(resolution), resolution);
+    Timer<true,false> playbackTimer;
+    int frameTime = 1000.0f/framerate;
     while(renderer->ready())
     {
+        if(framerate > 0)
+            playbackTimer.start();
+
         if(renderer->mouseChanged())
         {
             auto result = decodeAndInterpolate(cameraPosition());
             interop->copyData(result.frame, result.pitch);
         }
         renderer->render();
+
+        if(framerate > 0)
+        {
+            auto elapsed = playbackTimer.stop();
+            int delay = glm::round(frameTime - elapsed.cpuTime);
+            if(delay > 0)
+                std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+        }
     }
 }
 

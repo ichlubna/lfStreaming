@@ -12,7 +12,7 @@ class Decoder
     public:
         Decoder(std::string input, size_t startFrame = 0);
         ~Decoder();
-        void decodeAndPlay();
+        void decodeAndPlay(float framerate);
         void decodeAndStore(std::string trajectory, std::string outputPath);
         void setInterpolationMethod(std::string method);
 

@@ -19,6 +19,7 @@ class Timer
         void print(std::string type, float value) const
         {
             std::cout << type << " elapsed time: " << value << " ms" << std::endl;
+            std::cout << type << " fps: " << 1000/value << std::endl;
         }
         void printElapsedGPU() const
         {

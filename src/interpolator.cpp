@@ -89,7 +89,7 @@ void Interpolator::initInterpolation()
 {
     NvOFFRUC_CREATE_PARAM createParams{};
     createParams.pDevice = nullptr;
-    createParams.uiWidth = 1024;//resolution.x;
+    createParams.uiWidth = resolution.x;
     createParams.uiHeight = resolution.y;
     createParams.eResourceType = NvOFFRUCResourceType::CudaResource;
     createParams.eSurfaceFormat = NvOFFRUCSurfaceFormat::NV12Surface;

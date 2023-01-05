@@ -27,6 +27,7 @@ int main(int argc, char **argv)
                           "Example: lfStreamer -i /MyAmazingMachine/LFVideo.lf\n"
                           "-i - encoded LF file\n"
                           "-f - starting time frame\n"
+                          "-r - playback framerate (unlimited if not specified)\n"
                           "-m - interpolation method - OF_* (optical flow)\n"
                           "     order of 4 closest frames interpolation OF_TB - top-bottom, OF_LF - left-right, OF_D - diagonal\n"
                           "-t - specifies camera trajectory, stores views at the positions in the start time frame and closes the app\n"
@@ -52,7 +53,10 @@ int main(int argc, char **argv)
         if(!args["-t"])
         {
 
-            decoder.decodeAndPlay();
+            float framerate = -1;
+            if(!args["-r"])
+                framerate = args["-r"];
+            decoder.decodeAndPlay(framerate);
         }
         else
         {
