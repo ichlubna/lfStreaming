@@ -30,6 +30,7 @@ int main(int argc, char **argv)
                           "-r - playback framerate (unlimited if not specified)\n"
                           "-m - interpolation method - OF_* (optical flow)\n"
                           "     order of 4 closest frames interpolation OF_TB - top-bottom, OF_LF - left-right, OF_D - diagonal\n"
+                          "     PP (per pixel)\n"
                           "-t - specifies camera trajectory, stores views at the positions in the start time frame and closes the app\n"
                           "     trajectory format in normalized (0-1) LF grid coordinates: col_row,col_row,...\n"
                           "     e.g.: -t 0.0_0.0,0.42_0.5,...\n"

@@ -29,6 +29,8 @@ void Decoder::setInterpolationMethod(std::string method)
         interpolationOrder = SelectedFrames::LEFT_RIGHT;
     else if(method == "OF_D")
         interpolationOrder = SelectedFrames::DIAGONAL;
+    else if(method == "PP")
+        interpolationOrder = SelectedFrames::PERPIXEL;
     else
     {
         interpolationOrder = SelectedFrames::TOP_BOTTOM;
@@ -161,6 +163,7 @@ std::vector<void *> Decoder::getIntermediatePtrs()
 template<bool measure>
 Decoder::InterpolationResult Decoder::decodeAndInterpolate(glm::vec2 position)
 {
+    Timer<true,true> timer;
     if constexpr (measure)
     {
         std::cout << "Decoding the frames..." << std::endl;
@@ -176,18 +179,47 @@ Decoder::InterpolationResult Decoder::decodeAndInterpolate(glm::vec2 position)
 
     auto framePtrs = videoDecoder->getFramePointers();
     auto frames = videoDecoder->getFrames();
-    interpolator->registerResources(&framePtrs);
 
     if constexpr (measure)
     {
         timer.stop().printElapsed();
     }
-    
+   
+    if(interpolationOrder == SelectedFrames::PERPIXEL) 
+        return interpolateOptical<measure>(frames, framePtrs, guide);    
+    return interpolatePerPixel<measure>(frames, framePtrs, guide);    
+}
+
+template<bool measure>
+Decoder::InterpolationResult Decoder::interpolatePerPixel(const std::vector<VideoDecoder::DecodedFrame> *frames, const std::vector<void*> framePtrs, Decoder::SelectedFrames::InterpolationInfo guide)
+{
+    Timer<true,true> timer;
     if constexpr (measure)
     {
         std::cout << "Interpolating new view..." << std::endl;
         timer.start();
     }
+
+        
+
+    if constexpr (measure)
+    {
+        timer.stop().printElapsed();
+    }
+    return {0, 0};
+}
+
+
+template<bool measure>
+Decoder::InterpolationResult Decoder::interpolateOptical(const std::vector<VideoDecoder::DecodedFrame> *frames, const std::vector<void*> framePtrs, Decoder::SelectedFrames::InterpolationInfo guide)
+{
+    Timer<true,true> timer;
+    if constexpr (measure)
+    {
+        std::cout << "Interpolating new view..." << std::endl;
+        timer.start();
+    }
+    interpolator->registerResources(&framePtrs);
 
     for(size_t i = 0; i < guide.WEIGHTS_COUNT; i++)
     {

@@ -36,7 +36,7 @@ class Decoder
                         float weight;
                 };
 
-                enum Order {TOP_BOTTOM = 0, LEFT_RIGHT = 1, DIAGONAL = 2};
+                enum Order {TOP_BOTTOM = 0, LEFT_RIGHT = 1, DIAGONAL = 2, PERPIXEL = 3};
                 enum FramePosition {TOP_LEFT = 0, TOP_RIGHT = 1, BOTTOM_LEFT = 2, BOTTOM_RIGHT = 3};
                 const std::vector<FramePosition> orderIDs[3] {{TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT},
 //                const std::vector<FramePosition> orderIDs[3] {{TOP_LEFT, BOTTOM_LEFT, BOTTOM_RIGHT, TOP_RIGHT},
@@ -93,8 +93,11 @@ class Decoder
         };
         template<bool measure=false>
         InterpolationResult decodeAndInterpolate(glm::vec2 position);
+        template<bool measure=false>
+        InterpolationResult interpolateOptical(const std::vector<VideoDecoder::DecodedFrame> *frames, const std::vector<void*> framePtrs, Decoder::SelectedFrames::InterpolationInfo guide);
+        template<bool measure=false>
+        InterpolationResult interpolatePerPixel(const std::vector<VideoDecoder::DecodedFrame> *frames, const std::vector<void*> framePtrs, Decoder::SelectedFrames::InterpolationInfo guide);
         void prepareFrames();
         std::vector<void *> getIntermediatePtrs();
         glm::vec2 cameraPosition();
-        Timer<true,true> timer;
 };
