@@ -10,7 +10,7 @@ class Renderer
         void inputs();
         void setMousePosition(glm::vec2 position)
         {
-            mousePosition = position;
+            mousePosition = {position.y, position.x};
             mouseMoved = true;
         };
         glm::vec2 getMousePosition()

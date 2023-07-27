@@ -69,6 +69,7 @@ void Encoder::encodeTimeFrame(std::string inputDir, float quality, std::string f
     auto videoFormat = stringToFormat(format);
     size_t crf = calculateCrf(videoFormat, quality);
 
+    std::cout << "Time frame " << ++currentFrame << " of " << timeFrameCount << std::endl;
     std::cout << "Encoding..." << std::endl;
     LoadingBar bar(files.size() + 1, true);
 

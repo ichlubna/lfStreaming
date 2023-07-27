@@ -114,4 +114,5 @@ class Encoder
         void encodeTimeFrame(std::string inputDir, float quality, std::string format);
         void checkDir(std::string path);
         std::unique_ptr<Muxing::Muxer> muxer;
+        size_t currentFrame{0};
 };
