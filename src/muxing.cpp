@@ -59,8 +59,8 @@ void Muxing::Muxer::save(std::string filePath)
     fos.write(reinterpret_cast<const char *>(data.offsets.data()), data.offsets.size()*BYTE_COUNT);
     fos.write(reinterpret_cast<const char *>(data.references.data()), data.references.size()*BYTE_COUNT);
     fos.write(reinterpret_cast<const char *>(data.packets.data()), data.packets.size());
-    for(auto o : data.offsets) std::cerr << o << " ";
-    std::cerr << std::endl;
+    //for(auto o : data.offsets) std::cerr << o << " ";
+    //std::cerr << std::endl;
     //std::cerr << data.header.size() << " " << data.offsets.size() << " " << data.references.size() << " " << data.packets.size() << std::endl;
     fos.close();
 }

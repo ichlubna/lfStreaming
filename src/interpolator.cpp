@@ -25,7 +25,7 @@ void Interpolator::loadLibrary()
 {
     void *library = dlopen(NvOFFRCULibraryPath, RTLD_LAZY);
     if(!library)
-        throw std::runtime_error("Fruc library can't be dynamically loaded.");
+        throw std::runtime_error(std::string("Fruc library can't be dynamically loaded. ")+dlerror());;
 
     NvOFFRUCCreate = (PtrToFuncNvOFFRUCCreate)getProc(library, CreateProcName);
     NvOFFRUCRegisterResource = (PtrToFuncNvOFFRUCRegisterResource)getProc(library, RegisterResourceProcName);
@@ -89,7 +89,12 @@ void Interpolator::initInterpolation()
 {
     NvOFFRUC_CREATE_PARAM createParams{};
     createParams.pDevice = nullptr;
-    createParams.uiWidth = resolution.x;
+    //round to multiple of 2 for pitch since parameter nCuSurfacePitch is not working
+    //beter way would be decoding one frame and getting its pitch at the beginning 
+    int w = 1;
+    while(w < resolution.x)
+        w*=2;
+    createParams.uiWidth = w; 
     createParams.uiHeight = resolution.y;
     createParams.eResourceType = NvOFFRUCResourceType::CudaResource;
     createParams.eSurfaceFormat = NvOFFRUCSurfaceFormat::NV12Surface;

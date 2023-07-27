@@ -185,7 +185,7 @@ Decoder::InterpolationResult Decoder::decodeAndInterpolate(glm::vec2 position)
         timer.stop().printElapsed();
     }
    
-    if(interpolationOrder == SelectedFrames::PERPIXEL) 
+    if(interpolationOrder != SelectedFrames::PERPIXEL) 
         return interpolateOptical<measure>(frames, framePtrs, guide);    
     return interpolatePerPixel<measure>(frames, framePtrs, guide);    
 }

@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(lfStreamer LANGUAGES CXX CUDA)
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_EXPORT_COMPILE_COMMANDS 1 ) 
 set(CMAKE_CXX_STANDARD_REQUIRED on)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -pedantic -fmodules-ts")
 set(${PROJECT_NAME}_VERSION_MAJOR 0)
@@ -47,6 +48,7 @@ add_executable(${ENCODER} ${SOURCES_ENCODER})
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/src/libs)
+include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/src)
 include_directories(${CUDAToolkit_INCLUDE_DIRS}) 
 
 target_link_libraries(${PROJECT_NAME} glm glfw GLEW::GLEW ${OPENGL_LIBRARIES} ${CUDA_LIBRARIES} nvcuvid cuda)
