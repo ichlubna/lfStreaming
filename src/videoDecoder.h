@@ -13,6 +13,11 @@ class VideoDecoder
         ~VideoDecoder();
         void seek(size_t time);
         void initFrame();
+        void incrementTime();
+        [[nodiscard]]size_t getTimeLength() const
+        {
+            return demuxer->data.timeFrameCount();
+        }
         [[nodiscard]]glm::ivec2 getResolution() const
         {
             return demuxer->data.resolution();
@@ -20,10 +25,6 @@ class VideoDecoder
         [[nodiscard]] glm::ivec2 getColsRows() const
         {
             return demuxer->data.colsRows();
-        }
-        friend void operator++(VideoDecoder &decoder)
-        {
-            decoder.incrementTime();
         }
         void decodeFrame(glm::ivec2 position);
         void flush();
@@ -64,7 +65,6 @@ class VideoDecoder
         void createDecoder();
         void createParser();
         void decode(Muxing::Demuxer::PacketPointer packetPointer);
-        void incrementTime();
         void prepareFrame(int pictureID, CUVIDPROCPARAMS params);
         std::vector<DecodedFrame> frames;
         cudaVideoChromaFormat chromaFormat{cudaVideoChromaFormat_420};

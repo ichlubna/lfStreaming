@@ -51,15 +51,17 @@ void Decoder::decodeAndPlay(float framerate)
     renderer->init();
     interop->setTexture(renderer->getTexture(resolution), resolution);
     Timer<true,false> playbackTimer;
-    int frameTime = 1000.0f/framerate;
+    const int frameTime = 1000.0f/framerate;
+    const size_t length = videoDecoder->getTimeLength();
     while(renderer->ready())
     {
         if(framerate > 0)
             playbackTimer.start();
-
-        if(renderer->mouseChanged())
+       
+        if(length > 1 || renderer->mouseChanged())
         {
             auto result = decodeAndInterpolate(cameraPosition());
+            videoDecoder->incrementTime();
             interop->copyData(result.frame, result.pitch);
         }
         renderer->render();
