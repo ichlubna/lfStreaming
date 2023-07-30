@@ -4,6 +4,7 @@
 #include "renderer.h"
 #include "videoDecoder.h"
 #include "interpolator.h"
+#include "perPixel.h"
 #include "cudaGLInterop.h"
 #include "timer.h"
 
@@ -36,7 +37,7 @@ class Decoder
                         float weight;
                 };
 
-                enum Order {TOP_BOTTOM = 0, LEFT_RIGHT = 1, DIAGONAL = 2, PERPIXEL = 3};
+                enum Order {TOP_BOTTOM = 0, LEFT_RIGHT = 1, DIAGONAL = 2};
                 enum FramePosition {TOP_LEFT = 0, TOP_RIGHT = 1, BOTTOM_LEFT = 2, BOTTOM_RIGHT = 3};
                 const std::vector<FramePosition> orderIDs[3] {{TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT},
 //                const std::vector<FramePosition> orderIDs[3] {{TOP_LEFT, BOTTOM_LEFT, BOTTOM_RIGHT, TOP_RIGHT},
@@ -68,10 +69,12 @@ class Decoder
         std::unique_ptr<Renderer> renderer;
         std::unique_ptr<VideoDecoder> videoDecoder;
         std::unique_ptr<Interpolator> interpolator;
+        std::unique_ptr<PerPixel> perPixel;
         std::unique_ptr<CudaGLInterop> interop;
         std::vector<glm::vec2> parseTrajectory(std::string textTrajectory) const;
         std::vector<void *> intermediatePtrs;
         SelectedFrames::Order interpolationOrder{SelectedFrames::TOP_BOTTOM};
+        bool usePerPixel{false};
         class IntermediateFrame
         {
             public:

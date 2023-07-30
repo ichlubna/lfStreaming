@@ -10,6 +10,7 @@
 Decoder::Decoder(std::string inputPath, size_t startFrame) : renderer{std::make_unique<Renderer>()}, videoDecoder{std::make_unique<VideoDecoder>(inputPath)}, interop{std::make_unique<CudaGLInterop>()}
 {
     interpolator = std::make_unique<Interpolator>(videoDecoder->getResolution());
+    perPixel = std::make_unique<PerPixel>(videoDecoder->getResolution());
     videoDecoder->seek(startFrame);
     prepareFrames();
     intermediatePtrs = getIntermediatePtrs();
@@ -30,7 +31,10 @@ void Decoder::setInterpolationMethod(std::string method)
     else if(method == "OF_D")
         interpolationOrder = SelectedFrames::DIAGONAL;
     else if(method == "PP")
-        interpolationOrder = SelectedFrames::PERPIXEL;
+    {
+        interpolationOrder = SelectedFrames::TOP_BOTTOM;
+        usePerPixel = true;
+    }
     else
     {
         interpolationOrder = SelectedFrames::TOP_BOTTOM;
@@ -61,7 +65,8 @@ void Decoder::decodeAndPlay(float framerate)
         if(length > 1 || renderer->mouseChanged())
         {
             auto result = decodeAndInterpolate(cameraPosition());
-            videoDecoder->incrementTime();
+            if(!renderer->isPaused())
+                videoDecoder->incrementTime();
             interop->copyData(result.frame, result.pitch);
         }
         renderer->render();
@@ -187,9 +192,9 @@ Decoder::InterpolationResult Decoder::decodeAndInterpolate(glm::vec2 position)
         timer.stop().printElapsed();
     }
    
-    if(interpolationOrder != SelectedFrames::PERPIXEL) 
-        return interpolateOptical<measure>(frames, framePtrs, guide);    
-    return interpolatePerPixel<measure>(frames, framePtrs, guide);    
+    if(usePerPixel)
+        return interpolatePerPixel<measure>(frames, framePtrs, guide);    
+    return interpolateOptical<measure>(frames, framePtrs, guide);    
 }
 
 template<bool measure>
@@ -201,14 +206,14 @@ Decoder::InterpolationResult Decoder::interpolatePerPixel(const std::vector<Vide
         std::cout << "Interpolating new view..." << std::endl;
         timer.start();
     }
-
-        
+    
+    auto result = perPixel->interpolate(framePtrs);    
 
     if constexpr (measure)
     {
         timer.stop().printElapsed();
     }
-    return {0, 0};
+    return {result.result, result.pitch};
 }
 
 

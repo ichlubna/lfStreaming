@@ -50,15 +50,20 @@ void Renderer::createWindow()
     glfwSetKeyCallback(window, []([[maybe_unused]]GLFWwindow * window, int key, [[maybe_unused]]int scancode, [[maybe_unused]]int action, [[maybe_unused]]int mods)
     {
         auto *renderer = reinterpret_cast<Renderer *>(glfwGetWindowUserPointer(window));
-        switch(key)
-        {
-        case GLFW_KEY_ESCAPE:
-            renderer->quit();
-            break;
 
-        default:
-            break;
-        }
+        if(action == GLFW_PRESS)
+            switch(key)
+            {
+            case GLFW_KEY_ESCAPE:
+                renderer->quit();
+                break;
+            case GLFW_KEY_SPACE:
+                renderer->pause();
+                break;
+
+            default:
+                break;
+            }
     });
 }
 

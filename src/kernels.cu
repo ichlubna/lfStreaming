@@ -1,10 +1,11 @@
 #include <stdint.h>
 #include "kernels.h"
 
-namespace Conversion
+__device__ int linearCoords(int2 coords, int2 resolution)
 {
-constexpr bool FLOAT_YUV_CONVERSION{false};
-
+    int linearCoords = coords.y * resolution.x + coords.x;
+    return linearCoords;
+}
 __device__ bool coordsOutside(int2 coords, int2 resolution)
 {
     return (coords.x >= resolution.x || coords.y >= resolution.y);
@@ -18,12 +19,53 @@ __device__ int2 getImgCoords()
     return coords;
 }
 
-__device__ int linearCoords(int2 coords, int2 resolution)
+namespace PerPixelInterpolation
 {
-    int linearCoords = coords.y * resolution.x + coords.x;
-    return linearCoords;
+__device__ uchar3 load(const uint8_t *NV12, int pixelCount, int2 coords, int2 resolution, int pitch)
+{
+    int linear = linearCoords(coords, {pitch, resolution.x});
+    uchar3 yuv;
+    yuv.x = NV12[linear];
+    auto UVplane = NV12 + pixelCount;
+    //yuv.y = UVplane[linear];
+    //yuv.z = UVplane[linear + 1];
+    return yuv;
 }
 
+__device__ uint8_t loadY(uint8_t *NV12, int2 coords, int2 resolution, int pitch)
+{
+    int linear = linearCoords(coords, {pitch, resolution.x});
+    return NV12[linear];
+}
+
+__device__ void store(uchar3 yuv, uint8_t *target, int2 coords, int2 resolution, int pitch)
+{
+    int linear = linearCoords(coords, {pitch, resolution.x});
+    target[linear] = yuv.x;
+}
+
+__global__ void perPixelKernel(const uint8_t * const*frames, uint8_t *result, int2 resolution, int pixelCount, int pitch)
+{
+    int2 coords = getImgCoords();
+    if(coordsOutside(coords, resolution))
+        return;
+    //uchar3 yuv = load(frames[0], pixelCount, coords, resolution, pitch);
+    //yuv.y=0; yuv.z=0;
+    //store(yuv, result, coords, resolution, pitch);
+}
+
+void perPixel(const void * const* frames, uint8_t *result, int2 resolution, int pitch)
+{
+    constexpr dim3 WG_SIZE{16, 16, 1};
+    dim3 wgCount{1 + resolution.x / WG_SIZE.x, 1 + resolution.y / WG_SIZE.y, 1};
+    perPixelKernel <<< wgCount, WG_SIZE, 0>>>(reinterpret_cast<const uint8_t* const*>(frames), result, resolution, pitch * resolution.y, pitch);
+}
+
+}
+
+namespace Conversion
+{
+constexpr bool FLOAT_YUV_CONVERSION{false};
 class NV12Block
 {
     public:
@@ -146,3 +188,5 @@ void NV12ToRGBA(uint8_t *NV12, cudaSurfaceObject_t RGBA, int2 resolution, int pi
     NV12ToRGBAKernel <<< wgCount, WG_SIZE, 0>>>(NV12, RGBA, resolution, halfResolution, pitch * resolution.y, pitch);
 }
 }
+
+

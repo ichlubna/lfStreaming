@@ -28,11 +28,17 @@ class Renderer
         {
             return prepared;
         };
+
+        bool isPaused()
+        {
+            return paused;
+        };
         unsigned int getTexture(glm::ivec2 resolution);
 
     private:
         bool prepared{false};
         bool mouseMoved{true};
+        bool paused{false};
         unsigned int shaderProgram;
         unsigned int texture;
         glm::uvec2 initialResolution{1280, 720};
@@ -46,5 +52,9 @@ class Renderer
         void quit()
         {
             prepared = false;
+        };
+        void pause()
+        {
+            paused = !paused;
         };
 };

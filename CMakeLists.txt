@@ -18,6 +18,7 @@ src/renderer.cpp
 src/lfStreamerApp.cpp
 src/videoDecoder.cpp
 src/interpolator.cpp
+src/perPixel.cu
 src/cudaGLInterop.cu
 src/exporter.cu
 src/kernels.cu
