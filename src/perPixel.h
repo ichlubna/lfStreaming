@@ -5,15 +5,23 @@
 class PerPixel
 {
     public:
+    class InputFrames
+    {
+        public:
+        static constexpr size_t COUNT{4};
+        std::vector<CUdeviceptr> frames;
+        std::vector<float> weights;
+        std::vector<size_t> pitches;
+    };
+
     class Result
     {
         public:
         size_t pitch;
         CUdeviceptr result;
     };
-    PerPixel(glm::ivec2 res) : resolution{res.x, res.y}, pixelCount{static_cast<size_t>(res.x*res.y)}{};
-    static constexpr size_t FRAMES_COUNT{4};
-    Result interpolate(const std::vector<void*> frames);
+    PerPixel(glm::ivec2 res);
+    Result interpolate(InputFrames input);
 
     private:
     uint8_t *result;

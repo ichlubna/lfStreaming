@@ -207,7 +207,14 @@ Decoder::InterpolationResult Decoder::interpolatePerPixel(const std::vector<Vide
         timer.start();
     }
     
-    auto result = perPixel->interpolate(framePtrs);    
+    PerPixel::InputFrames input;
+    for(size_t i=0; i<PerPixel::InputFrames::COUNT; i++)
+    {
+        input.frames.push_back(frames->at(i).frame);
+        input.weights.push_back(4.2);
+        input.pitches.push_back(frames->at(i).pitch);
+    } 
+    auto result = perPixel->interpolate(input);    
 
     if constexpr (measure)
     {

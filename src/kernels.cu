@@ -21,6 +21,10 @@ __device__ int2 getImgCoords()
 
 namespace PerPixelInterpolation
 {
+__constant__ float weights[INPUT_COUNT];
+__constant__ int pitches[INPUT_COUNT];
+__constant__ size_t frames[INPUT_COUNT];
+
 __device__ uchar3 load(const uint8_t *NV12, int pixelCount, int2 coords, int2 resolution, int pitch)
 {
     int linear = linearCoords(coords, {pitch, resolution.x});
@@ -43,8 +47,9 @@ __device__ void store(uchar3 yuv, uint8_t *target, int2 coords, int2 resolution,
     int linear = linearCoords(coords, {pitch, resolution.x});
     target[linear] = yuv.x;
 }
-
-__global__ void perPixelKernel(const uint8_t * const*frames, uint8_t *result, int2 resolution, int pixelCount, int pitch)
+#include <cuda.h>
+#include <stdio.h>
+__global__ void perPixelKernel(uint8_t *result, int2 resolution, int pixelCount, int pitch)
 {
     int2 coords = getImgCoords();
     if(coordsOutside(coords, resolution))
@@ -52,13 +57,19 @@ __global__ void perPixelKernel(const uint8_t * const*frames, uint8_t *result, in
     //uchar3 yuv = load(frames[0], pixelCount, coords, resolution, pitch);
     //yuv.y=0; yuv.z=0;
     //store(yuv, result, coords, resolution, pitch);
+    int l = linearCoords(coords, {resolution});
+    result[l] = reinterpret_cast<uint8_t*>(frames[0])[l];
 }
 
-void perPixel(const void * const* frames, uint8_t *result, int2 resolution, int pitch)
+void perPixel(std::vector<CUdeviceptr> inFrames, std::vector<float> inWeights, std::vector<size_t> inPitches, uint8_t *result, int2 resolution, int pitch)
 {
+    cudaMemcpyToSymbol(PerPixelInterpolation::frames, inFrames.data(), INPUT_COUNT * sizeof(CUdeviceptr));
+    cudaMemcpyToSymbol(PerPixelInterpolation::weights, inWeights.data(), INPUT_COUNT * sizeof(float));
+    cudaMemcpyToSymbol(PerPixelInterpolation::pitches, inPitches.data(), INPUT_COUNT * sizeof(int));
     constexpr dim3 WG_SIZE{16, 16, 1};
     dim3 wgCount{1 + resolution.x / WG_SIZE.x, 1 + resolution.y / WG_SIZE.y, 1};
-    perPixelKernel <<< wgCount, WG_SIZE, 0>>>(reinterpret_cast<const uint8_t* const*>(frames), result, resolution, pitch * resolution.y, pitch);
+    perPixelKernel <<< wgCount, WG_SIZE, 0>>>(result, resolution, pitch * resolution.y, pitch);
+    cudaDeviceSynchronize();
 }
 
 }
