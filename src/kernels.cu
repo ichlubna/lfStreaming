@@ -24,6 +24,7 @@ namespace PerPixelInterpolation
 __constant__ float weights[INPUT_COUNT];
 __constant__ int pitches[INPUT_COUNT];
 __constant__ size_t frames[INPUT_COUNT];
+constexpr int KERNEL{2}; 
 
 __device__ uchar3 load(const uint8_t *NV12, int pixelCount, int2 coords, int2 resolution, int pitch)
 {
@@ -42,23 +43,49 @@ __device__ uint8_t loadY(uint8_t *NV12, int2 coords, int2 resolution, int pitch)
     return NV12[linear];
 }
 
-__device__ void store(uchar3 yuv, uint8_t *target, int2 coords, int2 resolution, int pitch)
+__device__ uint4 loadClosestY(uint8_t *NV12, int2 coords, int2 resolution, int pitch)
+{  
+    constexpr int UNIT_SIZE{4}; 
+    int linear = linearCoords(coords, {pitch, resolution.y}) - KERNEL;
+    if(linear<0)
+        linear=0;
+    int roundLinear = linear/UNIT_SIZE;
+    uint offset = linear-roundLinear*UNIT_SIZE;
+    uint2 sample;
+    sample.x = reinterpret_cast<uint*>(NV12)[roundLinear];
+    sample.y = reinterpret_cast<uint*>(NV12)[roundLinear+1];
+    return {sample.x, sample.y, offset, static_cast<unsigned int>(linear)};
+}
+
+
+__device__ uchar2 loadUV(uint8_t *NV12, int2 coords, int2 resolution, int pitch, int pixelCount)
+{
+    int linear = linearCoords({coords.x*2, coords.y}, {pitch, resolution.y});
+    uint8_t *UVPlane = NV12+pixelCount;
+    return {UVPlane[linear], UVPlane[linear+1]}; 
+}
+
+__device__ void store(uchar3 yuv, uint8_t *target, int2 coords, int2 resolution, int pitch, int pixelCount)
 {
     int linear = linearCoords(coords, {pitch, resolution.x});
     target[linear] = yuv.x;
+    linear = linearCoords({coords.x*2, coords.y}, {pitch, resolution.y});
+    uint8_t *UVPlane = target+pixelCount;
+    UVPlane[linear] = yuv.y;
+    UVPlane[linear+1] = yuv.z;
 }
-#include <cuda.h>
-#include <stdio.h>
+
 __global__ void perPixelKernel(uint8_t *result, int2 resolution, int pixelCount, int pitch)
 {
     int2 coords = getImgCoords();
     if(coordsOutside(coords, resolution))
         return;
-    //uchar3 yuv = load(frames[0], pixelCount, coords, resolution, pitch);
-    //yuv.y=0; yuv.z=0;
-    //store(yuv, result, coords, resolution, pitch);
     int l = linearCoords(coords, {resolution});
-    result[l] = reinterpret_cast<uint8_t*>(frames[0])[l];
+    uint4 sample = loadClosestY(reinterpret_cast<uint8_t*>(frames[0]), coords, resolution, pitch);
+    uint8_t *pixels = reinterpret_cast<uint8_t*>(&sample);
+    uint8_t y = pixels[sample.z];
+    uchar2 uv = loadUV(reinterpret_cast<uint8_t*>(frames[0]), coords, resolution, pitch, pixelCount);  
+    store({y, uv.x, uv.y}, result, coords, resolution, pitch, pixelCount);
 }
 
 void perPixel(std::vector<CUdeviceptr> inFrames, std::vector<float> inWeights, std::vector<size_t> inPitches, uint8_t *result, int2 resolution, int pitch)
@@ -69,7 +96,6 @@ void perPixel(std::vector<CUdeviceptr> inFrames, std::vector<float> inWeights, s
     constexpr dim3 WG_SIZE{16, 16, 1};
     dim3 wgCount{1 + resolution.x / WG_SIZE.x, 1 + resolution.y / WG_SIZE.y, 1};
     perPixelKernel <<< wgCount, WG_SIZE, 0>>>(result, resolution, pitch * resolution.y, pitch);
-    cudaDeviceSynchronize();
 }
 
 }
