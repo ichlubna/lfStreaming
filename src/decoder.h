@@ -35,6 +35,7 @@ class Decoder
                     public:
                         glm::ivec2 coord;
                         float weight;
+                        glm::vec2 offset;
                 };
 
                 enum Order {TOP_BOTTOM = 0, LEFT_RIGHT = 1, DIAGONAL = 2};

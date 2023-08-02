@@ -12,6 +12,9 @@ PerPixel::PerPixel(glm::ivec2 res) : resolution{res.x, res.y}, pixelCount{static
 
 PerPixel::Result PerPixel::interpolate(PerPixel::InputFrames input)
 {
-    PerPixelInterpolation::perPixel(input.frames, input.weights, input.pitches, reinterpret_cast<uint8_t*>(result), resolution, pitch);
+    std::vector<float2> inOffsets;
+    for(const auto &o : input.offsets)
+        inOffsets.push_back({o.x, o.y}); 
+    PerPixelInterpolation::perPixel(input.frames, input.weights, inOffsets, input.pitches, reinterpret_cast<uint8_t*>(result), resolution, pitch);
     return {pitch, reinterpret_cast<CUdeviceptr>(result)};
 }

@@ -24,6 +24,7 @@ namespace PerPixelInterpolation
 __constant__ float weights[INPUT_COUNT];
 __constant__ int pitches[INPUT_COUNT];
 __constant__ size_t frames[INPUT_COUNT];
+__constant__ float2 offsets[INPUT_COUNT];
 constexpr int KERNEL{2}; 
 
 __device__ uchar3 load(const uint8_t *NV12, int pixelCount, int2 coords, int2 resolution, int pitch)
@@ -57,10 +58,9 @@ __device__ uint4 loadClosestY(uint8_t *NV12, int2 coords, int2 resolution, int p
     return {sample.x, sample.y, offset, static_cast<unsigned int>(linear)};
 }
 
-
 __device__ uchar2 loadUV(uint8_t *NV12, int2 coords, int2 resolution, int pitch, int pixelCount)
 {
-    int linear = linearCoords({coords.x*2, coords.y}, {pitch, resolution.y});
+    int linear = linearCoords({coords.x<<1, coords.y}, {pitch, resolution.y});
     uint8_t *UVPlane = NV12+pixelCount;
     return {UVPlane[linear], UVPlane[linear+1]}; 
 }
@@ -69,13 +69,36 @@ __device__ void store(uchar3 yuv, uint8_t *target, int2 coords, int2 resolution,
 {
     int linear = linearCoords(coords, {pitch, resolution.x});
     target[linear] = yuv.x;
-    linear = linearCoords({coords.x*2, coords.y}, {pitch, resolution.y});
+    linear = linearCoords({coords.x<<1, coords.y}, {pitch, resolution.y});
     uint8_t *UVPlane = target+pixelCount;
     UVPlane[linear] = yuv.y;
     UVPlane[linear+1] = yuv.z;
 }
 
-__global__ void perPixelKernel(uint8_t *result, int2 resolution, int pixelCount, int pitch)
+class Range
+{
+    private:
+    uchar2 range{UCHAR_MAX, 0};
+    
+    public:
+    void add(uint8_t value)
+    {
+        range.x = umin(value, range.x);
+        range.y = umax(value, range.y);
+    }   
+
+    uint8_t distance()
+    {
+        return range.y-range.x;
+    } 
+};
+
+__device__ int2 focusCoords(int viewID, int coords, float focus)
+{
+    //enum FramePosition {TOP_LEFT = 0, TOP_RIGHT = 1, BOTTOM_LEFT = 2, BOTTOM_RIGHT = 3};
+}
+
+__global__ void perPixelKernel(uint8_t *result, int2 resolution, int pixelCount, int pitch, int2 doubleResolution)
 {
     int2 coords = getImgCoords();
     if(coordsOutside(coords, resolution))
@@ -83,19 +106,20 @@ __global__ void perPixelKernel(uint8_t *result, int2 resolution, int pixelCount,
     int l = linearCoords(coords, {resolution});
     uint4 sample = loadClosestY(reinterpret_cast<uint8_t*>(frames[0]), coords, resolution, pitch);
     uint8_t *pixels = reinterpret_cast<uint8_t*>(&sample);
-    uint8_t y = pixels[sample.z];
-    uchar2 uv = loadUV(reinterpret_cast<uint8_t*>(frames[0]), coords, resolution, pitch, pixelCount);  
+    uint8_t y = pixels[sample.z+KERNEL];
+    uchar2 uv = loadUV(reinterpret_cast<uint8_t*>(frames[0]), coords, resolution, pitch, pixelCount); 
     store({y, uv.x, uv.y}, result, coords, resolution, pitch, pixelCount);
 }
 
-void perPixel(std::vector<CUdeviceptr> inFrames, std::vector<float> inWeights, std::vector<size_t> inPitches, uint8_t *result, int2 resolution, int pitch)
+void perPixel(std::vector<CUdeviceptr> inFrames, std::vector<float> inWeights, std::vector<float2> inOffsets, std::vector<size_t> inPitches, uint8_t *result, int2 resolution, int pitch)
 {
     cudaMemcpyToSymbol(PerPixelInterpolation::frames, inFrames.data(), INPUT_COUNT * sizeof(CUdeviceptr));
     cudaMemcpyToSymbol(PerPixelInterpolation::weights, inWeights.data(), INPUT_COUNT * sizeof(float));
     cudaMemcpyToSymbol(PerPixelInterpolation::pitches, inPitches.data(), INPUT_COUNT * sizeof(int));
+    cudaMemcpyToSymbol(PerPixelInterpolation::offsets, inOffsets.data(), INPUT_COUNT * sizeof(float2));
     constexpr dim3 WG_SIZE{16, 16, 1};
     dim3 wgCount{1 + resolution.x / WG_SIZE.x, 1 + resolution.y / WG_SIZE.y, 1};
-    perPixelKernel <<< wgCount, WG_SIZE, 0>>>(result, resolution, pitch * resolution.y, pitch);
+    perPixelKernel<<<wgCount, WG_SIZE, 0>>>(result, resolution, pitch * resolution.y, pitch, {resolution.x*2, resolution.y*2});
 }
 
 }
@@ -222,7 +246,7 @@ void NV12ToRGBA(uint8_t *NV12, cudaSurfaceObject_t RGBA, int2 resolution, int pi
     int2 halfResolution{resolution.x >> 1, resolution.y >> 1};
     constexpr dim3 WG_SIZE{16, 16, 1};
     dim3 wgCount{1 + halfResolution.x / WG_SIZE.x, 1 + halfResolution.y / WG_SIZE.y, 1};
-    NV12ToRGBAKernel <<< wgCount, WG_SIZE, 0>>>(NV12, RGBA, resolution, halfResolution, pitch * resolution.y, pitch);
+    NV12ToRGBAKernel<<<wgCount, WG_SIZE, 0>>>(NV12, RGBA, resolution, halfResolution, pitch * resolution.y, pitch);
 }
 }
 

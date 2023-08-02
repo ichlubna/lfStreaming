@@ -12,6 +12,7 @@ class PerPixel
         std::vector<CUdeviceptr> frames;
         std::vector<float> weights;
         std::vector<size_t> pitches;
+        std::vector<glm::vec2> offsets;
     };
 
     class Result

@@ -109,7 +109,8 @@ std::vector<glm::vec2> Decoder::parseTrajectory(std::string textTrajectory) cons
 
 void Decoder::SelectedFrames::compute(glm::uvec2 gridSize, glm::vec2 position)
 {
-    glm::vec2 gridPosition{glm::vec2(gridSize - 1u) *position};
+    glm::vec2 maxCoords{gridSize - 1u};
+    glm::vec2 gridPosition{maxCoords*position};
     glm::ivec2 downCoords{glm::floor(gridPosition)};
     glm::ivec2 upCoords{glm::ceil(gridPosition)};
 
@@ -119,19 +120,19 @@ void Decoder::SelectedFrames::compute(glm::uvec2 gridSize, glm::vec2 position)
 
     currentCoords = {downCoords};
     weight = (1 - unitPos.x) * (1 - unitPos.y);
-    frames[TOP_LEFT] = {currentCoords, weight};
+    frames[TOP_LEFT] = {currentCoords, weight, gridPosition-glm::vec2(currentCoords)};
 
     currentCoords = {upCoords.x, downCoords.y};
     weight = unitPos.x * (1 - unitPos.y);
-    frames[TOP_RIGHT] = {currentCoords, weight};
+    frames[TOP_RIGHT] = {currentCoords, weight, gridPosition-glm::vec2(currentCoords)};
 
     currentCoords = {downCoords.x, upCoords.y};
     weight = (1 - unitPos.x) * unitPos.y;
-    frames[BOTTOM_LEFT] = {currentCoords, weight};
+    frames[BOTTOM_LEFT] = {currentCoords, weight, gridPosition-glm::vec2(currentCoords)};
 
     currentCoords = {upCoords};
     weight = unitPos.x * unitPos.y;
-    frames[BOTTOM_RIGHT] = {currentCoords, weight};
+    frames[BOTTOM_RIGHT] = {currentCoords, weight, gridPosition-glm::vec2(currentCoords)};
 }
 
 Decoder::SelectedFrames::InterpolationInfo Decoder::SelectedFrames::guide(Order order)
@@ -191,7 +192,6 @@ Decoder::InterpolationResult Decoder::decodeAndInterpolate(glm::vec2 position)
     {
         timer.stop().printElapsed();
     }
-   
     if(usePerPixel)
         return interpolatePerPixel<measure>(frames, framePtrs, guide);    
     return interpolateOptical<measure>(frames, framePtrs, guide);    
@@ -211,8 +211,9 @@ Decoder::InterpolationResult Decoder::interpolatePerPixel(const std::vector<Vide
     for(size_t i=0; i<PerPixel::InputFrames::COUNT; i++)
     {
         input.frames.push_back(frames->at(i).frame);
-        input.weights.push_back(4.2);
+        input.weights.push_back(framePicker.frames[i].weight);
         input.pitches.push_back(frames->at(i).pitch);
+        input.offsets.push_back(framePicker.frames[i].offset);
     } 
     auto result = perPixel->interpolate(input);    
 
