@@ -11,8 +11,10 @@ class PerPixel
         static constexpr size_t COUNT{4};
         std::vector<CUdeviceptr> frames;
         std::vector<float> weights;
-        std::vector<size_t> pitches;
+        std::vector<int> pitches;
         std::vector<glm::vec2> offsets;
+        float inverseWeightSum{0};
+        float aspect{1};
     };
 
     class Result

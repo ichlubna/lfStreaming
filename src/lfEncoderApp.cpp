@@ -14,6 +14,7 @@ int main(int argc, char **argv)
 
     glm::ivec2 keyCoords{-1, -1};
     int keyInterval{-1};
+    float aspect{1};
 
     std::string helpText{ "Usage:\n"
                           "Example: lfEncoder -i /MyAmazingMachine/thoseImages -q 1.0 -f H265 -o ./coolFile.lf\n"
@@ -27,6 +28,7 @@ int main(int argc, char **argv)
                           "The automatic keyframe detection is not used if the arguments below are specified.\n"
                           "-g - GOP size - interval of keyframes in time frames\n"
                           "-k - coordinates of reference frame in the grid, e.g.: 0_0\n"
+                          "-a - aspect ratio of the capturing camera grid (horizontal/vertical space between the cameras)\n"
                         };
     if(args.printHelpIfPresent(helpText))
         return 0;
@@ -48,9 +50,11 @@ int main(int argc, char **argv)
             keyCoords = static_cast<glm::ivec2>(Muxing::parseFilename(args["-k"]));
         if(args["-g"])
             keyInterval = args["g"];
+        if(args["-a"])
+            aspect = static_cast<float>(args["-a"]);
 
         Encoder encoder;
-        encoder.encode(path, outputFile, quality, format, keyCoords, keyInterval);
+        encoder.encode(path, outputFile, quality, format, keyCoords, keyInterval, aspect);
     }
     catch(const std::exception &e)
     {

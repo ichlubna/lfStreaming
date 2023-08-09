@@ -45,6 +45,7 @@ void Decoder::setInterpolationMethod(std::string method)
 glm::vec2 Decoder::cameraPosition()
 {
     auto mouse = renderer->getMousePosition();
+    mouse = {mouse.y, mouse.x};
     constexpr float DELTA{0.0000001};
     return glm::clamp(mouse, {0 + DELTA, 0 + DELTA}, {1 - DELTA, 1 - DELTA});
 }
@@ -212,9 +213,12 @@ Decoder::InterpolationResult Decoder::interpolatePerPixel(const std::vector<Vide
     {
         input.frames.push_back(frames->at(i).frame);
         input.weights.push_back(framePicker.frames[i].weight);
+        input.inverseWeightSum += input.weights.back();
         input.pitches.push_back(frames->at(i).pitch);
         input.offsets.push_back(framePicker.frames[i].offset);
     } 
+    input.inverseWeightSum = 1.0f/input.inverseWeightSum;
+    input.aspect = videoDecoder->getGridAspect(); 
     auto result = perPixel->interpolate(input);    
 
     if constexpr (measure)

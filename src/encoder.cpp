@@ -47,7 +47,7 @@ void Encoder::checkDir(std::string path)
         throw std::runtime_error("The directory " + path + " is empty!");
 }
 
-void Encoder::encode(std::string inputDir, std::string outputFile, float quality, std::string format, glm::ivec2 keyCoords, int keyInterval)
+void Encoder::encode(std::string inputDir, std::string outputFile, float quality, std::string format, glm::ivec2 keyCoords, int keyInterval, float aspect)
 {
     if(keyCoords.x + keyInterval >= 0)
         throw std::runtime_error("Not implemented yet.");
@@ -55,11 +55,11 @@ void Encoder::encode(std::string inputDir, std::string outputFile, float quality
     auto timeFrameDirs = Muxing::listPath(inputDir);
     timeFrameCount = timeFrameDirs.size();
     for(auto const &dir : timeFrameDirs)
-        encodeTimeFrame(inputDir / dir, quality, format);
+        encodeTimeFrame(inputDir / dir, quality, format, aspect);
     muxer->save(outputFile);
 }
 
-void Encoder::encodeTimeFrame(std::string inputDir, float quality, std::string format)
+void Encoder::encodeTimeFrame(std::string inputDir, float quality, std::string format, float aspect)
 {
     checkDir(inputDir);
     auto files = Muxing::listPath(inputDir);
@@ -82,7 +82,7 @@ void Encoder::encodeTimeFrame(std::string inputDir, float quality, std::string f
     auto resolution = refFrame.getResolution();
 
     if(!muxer->isInitialized())
-        muxer->init(resolution, colsRows, videoFormat, timeFrameCount);
+        muxer->init(resolution, colsRows, videoFormat, timeFrameCount, aspect);
 
     for(auto const &file : files)
         if(referenceFrame == file)

@@ -42,9 +42,9 @@ void Muxing::EncodedData::addData(const std::vector<uint8_t> *packetData)
     packets.insert(packets.end(), packetData->begin(), packetData->end());
 }
 
-void Muxing::EncodedData::initHeader(glm::uvec2 resolution, glm::uvec2 colsRows, uint32_t format, uint32_t timeFrameCount)
+void Muxing::EncodedData::initHeader(glm::uvec2 resolution, glm::uvec2 colsRows, uint32_t format, uint32_t timeFrameCount, float aspect)
 {
-    header = {resolution.x, resolution.y, colsRows.x, colsRows.y, format, timeFrameCount};
+    header = {resolution.x, resolution.y, colsRows.x, colsRows.y, format, timeFrameCount, static_cast<unsigned int>(aspect*Muxing::EncodedData::FIXED_FLOAT_MULTIPLIER)};
     size_t count{colsRows.x *colsRows.y * timeFrameCount};
     offsets.reserve(count);
     references.reserve(count);
@@ -101,7 +101,7 @@ Muxing::Demuxer::Demuxer(std::string filePath)
 
 size_t Muxing::Demuxer::getLinearIndex(glm::ivec3 colsRowsTime) const
 {
-    return data.gridSize() * colsRowsTime.z + colsRowsTime.x * data.colsRows().y + colsRowsTime.y;
+    return data.gridSize() * colsRowsTime.z + colsRowsTime.y * data.colsRows().x + colsRowsTime.x;
 }
 
 std::vector<uint8_t> Muxing::Demuxer::copyPacket(glm::ivec3 colsRowsTime) const

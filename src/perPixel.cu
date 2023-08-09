@@ -14,7 +14,7 @@ PerPixel::Result PerPixel::interpolate(PerPixel::InputFrames input)
 {
     std::vector<float2> inOffsets;
     for(const auto &o : input.offsets)
-        inOffsets.push_back({o.x, o.y}); 
-    PerPixelInterpolation::perPixel(input.frames, input.weights, inOffsets, input.pitches, reinterpret_cast<uint8_t*>(result), resolution, pitch);
+        inOffsets.push_back({o.x*input.aspect, o.y}); 
+    PerPixelInterpolation::perPixel(input.frames, input.weights, inOffsets, input.pitches, reinterpret_cast<uint8_t*>(result), input.inverseWeightSum, resolution, pitch);
     return {pitch, reinterpret_cast<CUdeviceptr>(result)};
 }

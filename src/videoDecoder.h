@@ -14,6 +14,10 @@ class VideoDecoder
         void seek(size_t time);
         void initFrame();
         void incrementTime();
+        [[nodiscard]]float getGridAspect() const
+        {
+            return demuxer->data.aspect();
+        }
         [[nodiscard]]size_t getTimeLength() const
         {
             return demuxer->data.timeFrameCount();

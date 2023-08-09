@@ -21,105 +21,193 @@ __device__ int2 getImgCoords()
 
 namespace PerPixelInterpolation
 {
-__constant__ float weights[INPUT_COUNT];
-__constant__ int pitches[INPUT_COUNT];
-__constant__ size_t frames[INPUT_COUNT];
-__constant__ float2 offsets[INPUT_COUNT];
+    namespace Inputs
+    {
+        __constant__ float weights[INPUT_COUNT];
+        __constant__ int pitches[INPUT_COUNT];
+        __constant__ size_t framesY[INPUT_COUNT];
+        __constant__ size_t framesUV[INPUT_COUNT];
+        __constant__ float2 offsets[INPUT_COUNT];
+        __constant__ int pixelCounts[INPUT_COUNT];
+        __constant__ uint8_t* resultY;
+        __constant__ uint8_t* resultUV;
+        __constant__ float inverseWeightSum;
+        __constant__ int2 resolution;
+        __constant__ int2 doubleResolution;
+        __constant__ int2 resolutionMinusOne;
+        __constant__ int pitch;
+        __constant__ int pixelCount;
+    }
 constexpr int KERNEL{2}; 
+constexpr int KERNEL_WIDTH{KERNEL*2+1};
 
-__device__ uchar3 load(const uint8_t *NV12, int pixelCount, int2 coords, int2 resolution, int pitch)
+__device__ uint8_t loadY(int frameID, int2 coords)
 {
-    int linear = linearCoords(coords, {pitch, resolution.x});
-    uchar3 yuv;
-    yuv.x = NV12[linear];
-    auto UVplane = NV12 + pixelCount;
-    //yuv.y = UVplane[linear];
-    //yuv.z = UVplane[linear + 1];
-    return yuv;
+    int linear = linearCoords(coords, {Inputs::pitches[frameID], Inputs::resolution.y});
+    return reinterpret_cast<uint8_t*>(Inputs::framesY[frameID])[linear];
 }
 
-__device__ uint8_t loadY(uint8_t *NV12, int2 coords, int2 resolution, int pitch)
-{
-    int linear = linearCoords(coords, {pitch, resolution.x});
-    return NV12[linear];
-}
-
-__device__ uint4 loadClosestY(uint8_t *NV12, int2 coords, int2 resolution, int pitch)
+__device__ uint3 loadClosestY(int frameID, int2 coords)
 {  
     constexpr int UNIT_SIZE{4}; 
-    int linear = linearCoords(coords, {pitch, resolution.y}) - KERNEL;
+    int linear = linearCoords(coords, {Inputs::pitches[frameID], Inputs::resolution.y}) - KERNEL;
     if(linear<0)
         linear=0;
     int roundLinear = linear/UNIT_SIZE;
     uint offset = linear-roundLinear*UNIT_SIZE;
     uint2 sample;
-    sample.x = reinterpret_cast<uint*>(NV12)[roundLinear];
-    sample.y = reinterpret_cast<uint*>(NV12)[roundLinear+1];
-    return {sample.x, sample.y, offset, static_cast<unsigned int>(linear)};
+    sample.x = reinterpret_cast<uint*>(Inputs::framesY[frameID])[roundLinear];
+    sample.y = reinterpret_cast<uint*>(Inputs::framesY[frameID])[roundLinear+1];
+    return {sample.x, sample.y, offset};
 }
 
-__device__ uchar2 loadUV(uint8_t *NV12, int2 coords, int2 resolution, int pitch, int pixelCount)
+__device__ uchar2 loadUV(int frameID, int2 coords)
 {
-    int linear = linearCoords({coords.x<<1, coords.y}, {pitch, resolution.y});
-    uint8_t *UVPlane = NV12+pixelCount;
+    int linear = linearCoords({coords.x<<1, coords.y>>1}, {Inputs::pitches[frameID], Inputs::resolution.y});
+    uint8_t *UVPlane = reinterpret_cast<uint8_t*>(Inputs::framesY[frameID])+Inputs::pixelCounts[frameID];
     return {UVPlane[linear], UVPlane[linear+1]}; 
 }
 
-__device__ void store(uchar3 yuv, uint8_t *target, int2 coords, int2 resolution, int pitch, int pixelCount)
+__device__ void store(uchar3 yuv, int2 coords)
 {
-    int linear = linearCoords(coords, {pitch, resolution.x});
-    target[linear] = yuv.x;
-    linear = linearCoords({coords.x<<1, coords.y}, {pitch, resolution.y});
-    uint8_t *UVPlane = target+pixelCount;
-    UVPlane[linear] = yuv.y;
-    UVPlane[linear+1] = yuv.z;
+    int linear = linearCoords(coords, {Inputs::pitch, Inputs::resolution.y});
+    Inputs::resultY[linear] = yuv.x;
+    linear = linearCoords({coords.x<<1, coords.y>>1}, {Inputs::pitch, Inputs::resolution.y});
+    Inputs::resultUV[linear] = yuv.y;
+    Inputs::resultUV[linear+1] = yuv.z;
 }
 
 class Range
 {
     private:
-    uchar2 range{UCHAR_MAX, 0};
+    uint2 range{UCHAR_MAX, 0};
     
     public:
-    void add(uint8_t value)
+    __device__ void add(uint value)
     {
         range.x = umin(value, range.x);
         range.y = umax(value, range.y);
     }   
 
-    uint8_t distance()
+    __device__ uint8_t distance()
     {
         return range.y-range.x;
     } 
 };
 
-__device__ int2 focusCoords(int viewID, int coords, float focus)
+__device__ int2 focusCoords(int viewID, int2 coords, float focus)
 {
-    //enum FramePosition {TOP_LEFT = 0, TOP_RIGHT = 1, BOTTOM_LEFT = 2, BOTTOM_RIGHT = 3};
+    float2 offset = Inputs::offsets[viewID];
+    float2 newCoords{__fmaf_rn(offset.x, focus, coords.x), __fmaf_rn(offset.y, focus, coords.y)};
+    return {static_cast<int>(lroundf(newCoords.x)), static_cast<int>(lroundf(newCoords.y))};
 }
 
-__global__ void perPixelKernel(uint8_t *result, int2 resolution, int pixelCount, int pitch, int2 doubleResolution)
+__device__ int2 clampCoords(int2 coords)
+{
+    int2 result;
+    result.x = min(Inputs::resolution.x-1, max(1, coords.x));
+    result.y = min(Inputs::resolution.y-1, max(1, coords.y));
+    return result;
+}
+
+__global__ void perPixelKernel(uint8_t *result)
 {
     int2 coords = getImgCoords();
-    if(coordsOutside(coords, resolution))
+    if(coordsOutside(coords, Inputs::resolution))
         return;
-    int l = linearCoords(coords, {resolution});
-    uint4 sample = loadClosestY(reinterpret_cast<uint8_t*>(frames[0]), coords, resolution, pitch);
-    uint8_t *pixels = reinterpret_cast<uint8_t*>(&sample);
-    uint8_t y = pixels[sample.z+KERNEL];
-    uchar2 uv = loadUV(reinterpret_cast<uint8_t*>(frames[0]), coords, resolution, pitch, pixelCount); 
-    store({y, uv.x, uv.y}, result, coords, resolution, pitch, pixelCount);
+    int l = linearCoords(coords, {Inputs::resolution});
+
+  
+    float bestFocus{0}; 
+    float bestDispersion{99999999.0f}; 
+    static float focus = -200; focus+=0.001;
+    Range range[5];
+    for(int i=0; i<INPUT_COUNT; i++)
+    {
+        int corners[]{0,0,0,0};
+        int2 focusedCoords = coords;//focusCoords(i, coords, focus);
+        focusedCoords.y -= KERNEL;
+        focusedCoords = clampCoords(focusedCoords);
+        for(int k=0; k<KERNEL_WIDTH; k++)
+        {   
+            focusedCoords.y++;
+            focusedCoords.y = min(Inputs::resolution.y, focusedCoords.y);
+            uint3 sample = loadClosestY(i, focusedCoords);
+            uint8_t *pixels = reinterpret_cast<uint8_t*>(&sample); 
+            if(k<=KERNEL+1)
+            {
+                corners[0] += pixels[sample.z]+pixels[sample.z+1];
+                corners[1] += pixels[sample.z+3]+pixels[sample.z+4];
+            }
+            if(k>=KERNEL+1)
+            {
+                corners[2] += pixels[sample.z]+pixels[sample.z+1];
+                corners[1] += pixels[sample.z+3]+pixels[sample.z+4];
+            }
+            for(int r=0; r<KERNEL_WIDTH-1; r++)
+               range[r].add(corners[r]); 
+            range[4].add(pixels[sample.z+2]);
+        }
+        float dispersion = range[4].distance(); 
+        for(int r=0; r<KERNEL_WIDTH-1; r++)
+            dispersion += range[r].distance()*(1.0f/9);
+        if(dispersion < bestDispersion)
+        {
+            bestDispersion = dispersion;
+            bestFocus = focus;
+        } 
+    }
+    
+    float3 yuv{0,0,0};
+    for(int i=0; i<INPUT_COUNT; i++)
+    {
+        int2 focusedCoords = focusCoords(i, coords, focus);
+        focusedCoords = clampCoords(focusedCoords);
+        //yuv.x += loadY(reinterpret_cast<uint8_t*>(frames[i]), focusedCoords, resolution, pitch) * weights[i];
+        yuv.x = __fmaf_rn(  loadY(i, focusedCoords),
+                            Inputs::weights[i], yuv.x);
+        uchar2 uv = loadUV(i, focusedCoords); 
+        yuv.y = __fmaf_rn(  uv.x,
+                            Inputs::weights[i], yuv.y);
+        yuv.z = __fmaf_rn(  uv.y,
+                            Inputs::weights[i], yuv.z);
+    }
+    yuv.x *= Inputs::inverseWeightSum;
+    yuv.y *= Inputs::inverseWeightSum;
+    yuv.z *= Inputs::inverseWeightSum;
+    //yuv.y = yuv.z = 128;
+    store({static_cast<uint8_t>(round(yuv.x)), static_cast<uint8_t>(round(yuv.y)), static_cast<uint8_t>(round(yuv.z))}, coords);
 }
 
-void perPixel(std::vector<CUdeviceptr> inFrames, std::vector<float> inWeights, std::vector<float2> inOffsets, std::vector<size_t> inPitches, uint8_t *result, int2 resolution, int pitch)
+void perPixel(std::vector<CUdeviceptr> inFrames, std::vector<float> inWeights, std::vector<float2> inOffsets, std::vector<int> inPitches, uint8_t *result, float weightSum, int2 resolution, int pitch)
 {
-    cudaMemcpyToSymbol(PerPixelInterpolation::frames, inFrames.data(), INPUT_COUNT * sizeof(CUdeviceptr));
-    cudaMemcpyToSymbol(PerPixelInterpolation::weights, inWeights.data(), INPUT_COUNT * sizeof(float));
-    cudaMemcpyToSymbol(PerPixelInterpolation::pitches, inPitches.data(), INPUT_COUNT * sizeof(int));
-    cudaMemcpyToSymbol(PerPixelInterpolation::offsets, inOffsets.data(), INPUT_COUNT * sizeof(float2));
+    cudaMemcpyToSymbol(Inputs::weights, inWeights.data(), INPUT_COUNT * sizeof(float));
+    cudaMemcpyToSymbol(Inputs::pitches, inPitches.data(), INPUT_COUNT * sizeof(int));
+    cudaMemcpyToSymbol(Inputs::offsets, inOffsets.data(), INPUT_COUNT * sizeof(float2));
+    cudaMemcpyToSymbol(Inputs::inverseWeightSum, &weightSum, sizeof(float));
+    cudaMemcpyToSymbol(Inputs::resolution, &resolution, sizeof(int2));
+    cudaMemcpyToSymbol(Inputs::pitch, &pitch, sizeof(int));
+    int2 doubleResolution{resolution.x*2, resolution.y*2};
+    cudaMemcpyToSymbol(Inputs::doubleResolution, &doubleResolution, sizeof(int2));
+    int pixelCount{pitch * resolution.y};
+    cudaMemcpyToSymbol(Inputs::pixelCount, &pixelCount, sizeof(int));
+    std::vector<int> pixelCounts; 
+    for(auto const &p : inPitches)
+        pixelCounts.push_back(p * resolution.y);
+    cudaMemcpyToSymbol(Inputs::pixelCounts, pixelCounts.data(), INPUT_COUNT * sizeof(int));
+    cudaMemcpyToSymbol(Inputs::framesY, inFrames.data(), INPUT_COUNT * sizeof(CUdeviceptr));
+    std::vector<size_t> UVFrames;
+    for(int i=0; i<INPUT_COUNT; i++)
+    {
+        UVFrames.push_back(inFrames[i]+pixelCounts[i]);
+    }
+    cudaMemcpyToSymbol(Inputs::framesUV, inFrames.data(), INPUT_COUNT * sizeof(CUdeviceptr));
+    cudaMemcpyToSymbol(Inputs::resultY, &result, sizeof(uint8_t*));
+    uint8_t* UVResult = result+pixelCount;
+    cudaMemcpyToSymbol(Inputs::resultUV, &UVResult, sizeof(uint8_t*));
     constexpr dim3 WG_SIZE{16, 16, 1};
     dim3 wgCount{1 + resolution.x / WG_SIZE.x, 1 + resolution.y / WG_SIZE.y, 1};
-    perPixelKernel<<<wgCount, WG_SIZE, 0>>>(result, resolution, pitch * resolution.y, pitch, {resolution.x*2, resolution.y*2});
+    perPixelKernel<<<wgCount, WG_SIZE, 0>>>(result);
 }
 
 }
