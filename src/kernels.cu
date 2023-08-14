@@ -63,7 +63,7 @@ __device__ uint3 loadClosestY(int frameID, int2 coords)
 
 __device__ uchar2 loadUV(int frameID, int2 coords)
 {
-    int linear = linearCoords({coords.x<<1, coords.y>>1}, {Inputs::pitches[frameID], Inputs::resolution.y});
+    int linear = linearCoords({coords.x-(coords.x&1), coords.y>>1}, {Inputs::pitches[frameID], Inputs::resolution.y});
     uint8_t *UVPlane = reinterpret_cast<uint8_t*>(Inputs::framesY[frameID])+Inputs::pixelCounts[frameID];
     return {UVPlane[linear], UVPlane[linear+1]}; 
 }
@@ -72,7 +72,8 @@ __device__ void store(uchar3 yuv, int2 coords)
 {
     int linear = linearCoords(coords, {Inputs::pitch, Inputs::resolution.y});
     Inputs::resultY[linear] = yuv.x;
-    linear = linearCoords({coords.x<<1, coords.y>>1}, {Inputs::pitch, Inputs::resolution.y});
+    linear = linearCoords({coords.x-(coords.x&1), coords.y>>1}, {Inputs::pitch, Inputs::resolution.y});
+    uint8_t *UVPlane = reinterpret_cast<uint8_t*>(Inputs::resultY)+Inputs::resolution.y*Inputs::pitch;
     Inputs::resultUV[linear] = yuv.y;
     Inputs::resultUV[linear+1] = yuv.z;
 }
