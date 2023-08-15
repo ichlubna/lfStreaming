@@ -37,6 +37,9 @@ namespace PerPixelInterpolation
         __constant__ int2 resolutionMinusOne;
         __constant__ int pitch;
         __constant__ int pixelCount;
+        __constant__ int2 focusRange;
+        constexpr int FOCUS_STEPS{16};
+        __constant__ int focusStep;
     }
 constexpr int KERNEL{2}; 
 constexpr int KERNEL_WIDTH{KERNEL*2+1};
@@ -121,48 +124,52 @@ __global__ void perPixelKernel(uint8_t *result)
   
     float bestFocus{0}; 
     float bestDispersion{99999999.0f}; 
-    static float focus = -200; focus+=0.001;
+    float focus = Inputs::focusRange.x;
     Range range[5];
-    for(int i=0; i<INPUT_COUNT; i++)
+    for(int f=0; f<Inputs::FOCUS_STEPS; f++)
     {
-        int corners[]{0,0,0,0};
-        int2 focusedCoords = coords;//focusCoords(i, coords, focus);
-        focusedCoords.y -= KERNEL;
-        focusedCoords = clampCoords(focusedCoords);
-        for(int k=0; k<KERNEL_WIDTH; k++)
-        {   
-            focusedCoords.y++;
-            focusedCoords.y = min(Inputs::resolution.y, focusedCoords.y);
-            uint3 sample = loadClosestY(i, focusedCoords);
-            uint8_t *pixels = reinterpret_cast<uint8_t*>(&sample); 
-            if(k<=KERNEL+1)
-            {
-                corners[0] += pixels[sample.z]+pixels[sample.z+1];
-                corners[1] += pixels[sample.z+3]+pixels[sample.z+4];
-            }
-            if(k>=KERNEL+1)
-            {
-                corners[2] += pixels[sample.z]+pixels[sample.z+1];
-                corners[1] += pixels[sample.z+3]+pixels[sample.z+4];
-            }
-            for(int r=0; r<KERNEL_WIDTH-1; r++)
-               range[r].add(corners[r]); 
-            range[4].add(pixels[sample.z+2]);
-        }
-        float dispersion = range[4].distance(); 
-        for(int r=0; r<KERNEL_WIDTH-1; r++)
-            dispersion += range[r].distance()*(1.0f/9);
-        if(dispersion < bestDispersion)
+        for(int i=0; i<INPUT_COUNT; i++)
         {
-            bestDispersion = dispersion;
-            bestFocus = focus;
-        } 
+            int corners[]{0,0,0,0};
+            int2 focusedCoords = focusCoords(i, coords, focus);
+            focusedCoords.y -= KERNEL;
+            focusedCoords = clampCoords(focusedCoords);
+            for(int k=0; k<KERNEL_WIDTH; k++)
+            {   
+                focusedCoords.y++;
+                focusedCoords.y = min(Inputs::resolution.y, focusedCoords.y);
+                uint3 sample = loadClosestY(i, focusedCoords);
+                uint8_t *pixels = reinterpret_cast<uint8_t*>(&sample); 
+                if(k<=KERNEL+1)
+                {
+                    corners[0] += pixels[sample.z]+pixels[sample.z+1];
+                    corners[1] += pixels[sample.z+3]+pixels[sample.z+4];
+                }
+                if(k>=KERNEL+1)
+                {
+                    corners[2] += pixels[sample.z]+pixels[sample.z+1];
+                    corners[1] += pixels[sample.z+3]+pixels[sample.z+4];
+                }
+                for(int r=0; r<KERNEL_WIDTH-1; r++)
+                   range[r].add(corners[r]); 
+                range[4].add(pixels[sample.z+2]);
+            }
+            float dispersion = range[4].distance(); 
+            for(int r=0; r<KERNEL_WIDTH-1; r++)
+                dispersion += range[r].distance()*(1.0f/9);
+            if(dispersion < bestDispersion)
+            {
+                bestDispersion = dispersion;
+                bestFocus = focus;
+            } 
+        }
+        focus += Inputs::focusStep;
     }
-    
+
     float3 yuv{0,0,0};
     for(int i=0; i<INPUT_COUNT; i++)
     {
-        int2 focusedCoords = focusCoords(i, coords, focus);
+        int2 focusedCoords = focusCoords(i, coords, bestFocus);
         focusedCoords = clampCoords(focusedCoords);
         //yuv.x += loadY(reinterpret_cast<uint8_t*>(frames[i]), focusedCoords, resolution, pitch) * weights[i];
         yuv.x = __fmaf_rn(  loadY(i, focusedCoords),
@@ -176,15 +183,19 @@ __global__ void perPixelKernel(uint8_t *result)
     yuv.x *= Inputs::inverseWeightSum;
     yuv.y *= Inputs::inverseWeightSum;
     yuv.z *= Inputs::inverseWeightSum;
+    yuv.x=yuv.y=yuv.z=((bestFocus-Inputs::focusRange.x*1.0f)/(Inputs::focusRange.y-Inputs::focusRange.x*1.0f))*255;
     //yuv.y = yuv.z = 128;
     store({static_cast<uint8_t>(round(yuv.x)), static_cast<uint8_t>(round(yuv.y)), static_cast<uint8_t>(round(yuv.z))}, coords);
 }
 
-void perPixel(std::vector<CUdeviceptr> inFrames, std::vector<float> inWeights, std::vector<float2> inOffsets, std::vector<int> inPitches, uint8_t *result, float weightSum, int2 resolution, int pitch)
+void perPixel(std::vector<CUdeviceptr> inFrames, std::vector<float> inWeights, std::vector<float2> inOffsets, std::vector<int> inPitches, uint8_t *result, float weightSum, int2 resolution, int pitch, int2 focusRange)
 {
     cudaMemcpyToSymbol(Inputs::weights, inWeights.data(), INPUT_COUNT * sizeof(float));
     cudaMemcpyToSymbol(Inputs::pitches, inPitches.data(), INPUT_COUNT * sizeof(int));
     cudaMemcpyToSymbol(Inputs::offsets, inOffsets.data(), INPUT_COUNT * sizeof(float2));
+    cudaMemcpyToSymbol(Inputs::focusRange, &focusRange, sizeof(int2));
+    int focusStep{(focusRange.y-focusRange.x)/Inputs::FOCUS_STEPS};
+    cudaMemcpyToSymbol(Inputs::focusStep, &focusStep, sizeof(int));
     cudaMemcpyToSymbol(Inputs::inverseWeightSum, &weightSum, sizeof(float));
     cudaMemcpyToSymbol(Inputs::resolution, &resolution, sizeof(int2));
     cudaMemcpyToSymbol(Inputs::pitch, &pitch, sizeof(int));

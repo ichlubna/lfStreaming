@@ -42,9 +42,15 @@ void Muxing::EncodedData::addData(const std::vector<uint8_t> *packetData)
     packets.insert(packets.end(), packetData->begin(), packetData->end());
 }
 
-void Muxing::EncodedData::initHeader(glm::uvec2 resolution, glm::uvec2 colsRows, uint32_t format, uint32_t timeFrameCount, float aspect)
+void Muxing::EncodedData::initHeader(glm::uvec2 resolution, glm::uvec2 colsRows, uint32_t format, uint32_t timeFrameCount, float aspect, glm::vec2 focusRange)
 {
-    header = {resolution.x, resolution.y, colsRows.x, colsRows.y, format, timeFrameCount, static_cast<unsigned int>(aspect*Muxing::EncodedData::FIXED_FLOAT_MULTIPLIER)};
+    header = {  resolution.x, resolution.y,
+                colsRows.x, colsRows.y,
+                format, timeFrameCount,
+                static_cast<unsigned int>(aspect*Muxing::EncodedData::FIXED_FLOAT_MULTIPLIER),
+                static_cast<unsigned int>(focusRange.x*Muxing::EncodedData::FIXED_FLOAT_MULTIPLIER),
+                static_cast<unsigned int>(focusRange.y*Muxing::EncodedData::FIXED_FLOAT_MULTIPLIER)
+             };
     size_t count{colsRows.x *colsRows.y * timeFrameCount};
     offsets.reserve(count);
     references.reserve(count);

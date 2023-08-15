@@ -15,6 +15,7 @@ class PerPixel
         std::vector<glm::vec2> offsets;
         float inverseWeightSum{0};
         float aspect{1};
+        glm::vec2 focusRange;
     };
 
     class Result

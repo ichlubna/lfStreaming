@@ -218,7 +218,8 @@ Decoder::InterpolationResult Decoder::interpolatePerPixel(const std::vector<Vide
         input.offsets.push_back(framePicker.frames[i].offset);
     } 
     input.inverseWeightSum = 1.0f/input.inverseWeightSum;
-    input.aspect = videoDecoder->getGridAspect(); 
+    input.aspect = videoDecoder->getGridAspect();
+    input.focusRange = videoDecoder->getFocusRange(); 
     auto result = perPixel->interpolate(input);    
 
     if constexpr (measure)

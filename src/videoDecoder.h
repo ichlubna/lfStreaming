@@ -18,6 +18,10 @@ class VideoDecoder
         {
             return demuxer->data.aspect();
         }
+        [[nodiscard]]glm::vec2 getFocusRange() const
+        {
+            return demuxer->data.focusRange();
+        }
         [[nodiscard]]size_t getTimeLength() const
         {
             return demuxer->data.timeFrameCount();

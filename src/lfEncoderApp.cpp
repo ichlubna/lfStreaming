@@ -13,6 +13,7 @@ int main(int argc, char **argv)
     std::string outputFile = static_cast<std::string>(args["-o"]);
 
     glm::ivec2 keyCoords{-1, -1};
+    glm::vec2 focusRange{0, 0.5};
     int keyInterval{-1};
     float aspect{1};
 
@@ -29,6 +30,7 @@ int main(int argc, char **argv)
                           "-g - GOP size - interval of keyframes in time frames\n"
                           "-k - coordinates of reference frame in the grid, e.g.: 0_0\n"
                           "-a - aspect ratio of the capturing camera grid (horizontal/vertical space between the cameras)\n"
+                          "-s - normalized focus range - the maximum and minimum disparity between input images, default is from zero to half of image width - 0.0_0.5\n"
                         };
     if(args.printHelpIfPresent(helpText))
         return 0;
@@ -48,13 +50,15 @@ int main(int argc, char **argv)
     {
         if(args["-k"])
             keyCoords = static_cast<glm::ivec2>(Muxing::parseFilename(args["-k"]));
+        if(args["-s"])
+            focusRange = Muxing::parseFilename(args["-s"]);
         if(args["-g"])
             keyInterval = args["g"];
         if(args["-a"])
             aspect = static_cast<float>(args["-a"]);
 
         Encoder encoder;
-        encoder.encode(path, outputFile, quality, format, keyCoords, keyInterval, aspect);
+        encoder.encode(path, outputFile, quality, format, keyCoords, keyInterval, aspect, focusRange);
     }
     catch(const std::exception &e)
     {

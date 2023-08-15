@@ -16,12 +16,12 @@ class Muxing
                 EncodedData() {};
                 enum Format { H265 = 0, AV1 = 1 };
                 void addData(const std::vector<uint8_t> *packetData);
-                void initHeader(glm::uvec2 resolution, glm::uvec2 colsRows, uint32_t format, uint32_t timeFrameCount, float aspect);
+                void initHeader(glm::uvec2 resolution, glm::uvec2 colsRows, uint32_t format, uint32_t timeFrameCount, float aspect, glm::vec2 focusRange);
                 std::vector<uint32_t> header;
                 std::vector<uint8_t> packets;
                 std::vector<uint32_t> offsets;
                 std::vector<uint32_t> references;
-                static constexpr size_t HEADER_VALUES_COUNT{7};
+                static constexpr size_t HEADER_VALUES_COUNT{9};
                 static constexpr float FIXED_FLOAT_MULTIPLIER{10000.0f};
                 [[nodiscard]] glm::uvec2 resolution() const
                 {
@@ -43,6 +43,10 @@ class Muxing
                 {
                     return header[6]/FIXED_FLOAT_MULTIPLIER;
                 }
+                [[nodiscard]] glm::vec2 focusRange() const
+                {
+                    return {header[7]/FIXED_FLOAT_MULTIPLIER, header[8]/FIXED_FLOAT_MULTIPLIER};
+                }
                 [[nodiscard]] size_t gridSize() const
                 {
                     return colsRows().x * colsRows().y;
@@ -57,9 +61,9 @@ class Muxing
                     m.addPacket(packet);
                 };
                 void save(std::string filePath);
-                void init(glm::uvec2 resolution, glm::uvec2 colsRows, uint32_t format, uint32_t timeFrameCount, float aspect)
+                void init(glm::uvec2 resolution, glm::uvec2 colsRows, uint32_t format, uint32_t timeFrameCount, float aspect, glm::vec2 focusRange)
                 {
-                    data.initHeader(resolution, colsRows, format, timeFrameCount, aspect);
+                    data.initHeader(resolution, colsRows, format, timeFrameCount, aspect, focusRange);
                     initialized = true;
                 };
                 [[nodiscard]] bool isInitialized()

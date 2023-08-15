@@ -13,7 +13,7 @@ class Encoder
 {
     public:
         Encoder() : muxer{std::make_unique<Muxing::Muxer>()} {};
-        void encode(std::string inputDir, std::string outputFile, float quality, std::string format, glm::ivec2 keyCoords, int keyInterval, float aspect);
+        void encode(std::string inputDir, std::string outputFile, float quality, std::string format, glm::ivec2 keyCoords, int keyInterval, float aspect, glm::vec2 focusRange);
         const std::vector<uint8_t> extractPacketData(AVPacket *packet) const;
         static const AVPixelFormat outputPixelFormat{AV_PIX_FMT_YUV420P};
         enum StreamFormat { H265 = 0, AV1 = 1 };
@@ -111,7 +111,7 @@ class Encoder
         size_t calculateCrf(StreamFormat format, float quality) const;
         size_t timeFrameCount{0};
         StreamFormat stringToFormat(std::string) const;
-        void encodeTimeFrame(std::string inputDir, float quality, std::string format, float aspect);
+        void encodeTimeFrame(std::string inputDir, float quality, std::string format, float aspect, glm::vec2 focusRange);
         void checkDir(std::string path);
         std::unique_ptr<Muxing::Muxer> muxer;
         size_t currentFrame{0};
