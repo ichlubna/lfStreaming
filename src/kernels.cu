@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdio.h>
 #include "kernels.h"
 
 __device__ int linearCoords(int2 coords, int2 resolution)
@@ -37,9 +38,9 @@ namespace PerPixelInterpolation
         __constant__ int2 resolutionMinusOne;
         __constant__ int pitch;
         __constant__ int pixelCount;
-        __constant__ int2 focusRange;
+        __constant__ float2 focusRange;
         constexpr int FOCUS_STEPS{16};
-        __constant__ int focusStep;
+        __constant__ float focusStep;
     }
 constexpr int KERNEL{2}; 
 constexpr int KERNEL_WIDTH{KERNEL*2+1};
@@ -120,8 +121,7 @@ __global__ void perPixelKernel(uint8_t *result)
     if(coordsOutside(coords, Inputs::resolution))
         return;
     int l = linearCoords(coords, {Inputs::resolution});
-
-  
+ 
     float bestFocus{0}; 
     float bestDispersion{99999999.0f}; 
     float focus = Inputs::focusRange.x;
@@ -139,24 +139,26 @@ __global__ void perPixelKernel(uint8_t *result)
                 focusedCoords.y++;
                 focusedCoords.y = min(Inputs::resolution.y, focusedCoords.y);
                 uint3 sample = loadClosestY(i, focusedCoords);
-                uint8_t *pixels = reinterpret_cast<uint8_t*>(&sample); 
+                uint8_t *pixels = reinterpret_cast<uint8_t*>(&sample)+sample.z; 
                 if(k<=KERNEL+1)
                 {
-                    corners[0] += pixels[sample.z]+pixels[sample.z+1];
-                    corners[1] += pixels[sample.z+3]+pixels[sample.z+4];
+                    corners[0] += pixels[0]+pixels[1]+pixels[2];
+                    corners[1] += pixels[3]+pixels[4]+pixels[2];
                 }
                 if(k>=KERNEL+1)
                 {
-                    corners[2] += pixels[sample.z]+pixels[sample.z+1];
-                    corners[1] += pixels[sample.z+3]+pixels[sample.z+4];
+                    corners[2] += pixels[0]+pixels[1]+pixels[2];
+                    corners[1] += pixels[3]+pixels[4]+pixels[2];
                 }
                 for(int r=0; r<KERNEL_WIDTH-1; r++)
-                   range[r].add(corners[r]); 
-                range[4].add(pixels[sample.z+2]);
+                   range[r].add(corners[r]);
+
+                if(k == KERNEL+1) 
+                    range[4].add(pixels[2]);
             }
             float dispersion = range[4].distance(); 
             for(int r=0; r<KERNEL_WIDTH-1; r++)
-                dispersion += range[r].distance()*(1.0f/9);
+                dispersion += range[r].distance()*(1.0f/3);
             if(dispersion < bestDispersion)
             {
                 bestDispersion = dispersion;
@@ -166,12 +168,23 @@ __global__ void perPixelKernel(uint8_t *result)
         focus += Inputs::focusStep;
     }
 
+    /*    
+    if(coords.x == coords.y && coords.x == 0)
+        printf("%f %f \n", Inputs::focusRange.x, Inputs::focusRange.y);
+    static int ff=0;
+    float f=Inputs::focusRange.x+ff*0.000001;
+    ff++;
+    if(coords.x == coords.y && coords.x == 0)
+        printf("%f \n", f);
+    bestFocus = f;
+    */
+        
+
     float3 yuv{0,0,0};
     for(int i=0; i<INPUT_COUNT; i++)
     {
         int2 focusedCoords = focusCoords(i, coords, bestFocus);
         focusedCoords = clampCoords(focusedCoords);
-        //yuv.x += loadY(reinterpret_cast<uint8_t*>(frames[i]), focusedCoords, resolution, pitch) * weights[i];
         yuv.x = __fmaf_rn(  loadY(i, focusedCoords),
                             Inputs::weights[i], yuv.x);
         uchar2 uv = loadUV(i, focusedCoords); 
@@ -183,18 +196,18 @@ __global__ void perPixelKernel(uint8_t *result)
     yuv.x *= Inputs::inverseWeightSum;
     yuv.y *= Inputs::inverseWeightSum;
     yuv.z *= Inputs::inverseWeightSum;
-    yuv.x=yuv.y=yuv.z=((bestFocus-Inputs::focusRange.x*1.0f)/(Inputs::focusRange.y-Inputs::focusRange.x*1.0f))*255;
-    //yuv.y = yuv.z = 128;
+    yuv.x=((bestFocus-Inputs::focusRange.x*1.0f)/(Inputs::focusRange.y-Inputs::focusRange.x*1.0f))*255;
+    yuv.y = yuv.z = 128;
     store({static_cast<uint8_t>(round(yuv.x)), static_cast<uint8_t>(round(yuv.y)), static_cast<uint8_t>(round(yuv.z))}, coords);
 }
 
-void perPixel(std::vector<CUdeviceptr> inFrames, std::vector<float> inWeights, std::vector<float2> inOffsets, std::vector<int> inPitches, uint8_t *result, float weightSum, int2 resolution, int pitch, int2 focusRange)
+void perPixel(std::vector<CUdeviceptr> inFrames, std::vector<float> inWeights, std::vector<float2> inOffsets, std::vector<int> inPitches, uint8_t *result, float weightSum, int2 resolution, int pitch, float2 focusRange)
 {
     cudaMemcpyToSymbol(Inputs::weights, inWeights.data(), INPUT_COUNT * sizeof(float));
     cudaMemcpyToSymbol(Inputs::pitches, inPitches.data(), INPUT_COUNT * sizeof(int));
     cudaMemcpyToSymbol(Inputs::offsets, inOffsets.data(), INPUT_COUNT * sizeof(float2));
     cudaMemcpyToSymbol(Inputs::focusRange, &focusRange, sizeof(int2));
-    int focusStep{(focusRange.y-focusRange.x)/Inputs::FOCUS_STEPS};
+    float focusStep{(focusRange.y-focusRange.x)/Inputs::FOCUS_STEPS};
     cudaMemcpyToSymbol(Inputs::focusStep, &focusStep, sizeof(int));
     cudaMemcpyToSymbol(Inputs::inverseWeightSum, &weightSum, sizeof(float));
     cudaMemcpyToSymbol(Inputs::resolution, &resolution, sizeof(int2));

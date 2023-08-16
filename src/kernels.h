@@ -5,7 +5,7 @@
 namespace PerPixelInterpolation
 {
 constexpr size_t INPUT_COUNT{4};
-void perPixel(std::vector<CUdeviceptr> inFrames, std::vector<float> inWeights, std::vector<float2> inOffset, std::vector<int> inPitches, uint8_t *result, float weightSum, int2 resolution, int pitch, int2 focusRange);
+void perPixel(std::vector<CUdeviceptr> inFrames, std::vector<float> inWeights, std::vector<float2> inOffset, std::vector<int> inPitches, uint8_t *result, float weightSum, int2 resolution, int pitch, float2 focusRange);
 }
 
 namespace Conversion

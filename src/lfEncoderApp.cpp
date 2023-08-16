@@ -51,7 +51,17 @@ int main(int argc, char **argv)
         if(args["-k"])
             keyCoords = static_cast<glm::ivec2>(Muxing::parseFilename(args["-k"]));
         if(args["-s"])
-            focusRange = Muxing::parseFilename(args["-s"]);
+        {
+            constexpr char valueDelimiter{'_'};
+            std::istringstream textFocusRange(args["-s"]);
+            int i{0};
+            std::string value;
+            while(std::getline(textFocusRange, value, valueDelimiter))
+            {
+                focusRange[i] = std::stof(value);
+                i++;
+            }
+        }
         if(args["-g"])
             keyInterval = args["g"];
         if(args["-a"])
