@@ -82,6 +82,7 @@ __device__ void store(uchar3 yuv, int2 coords)
     Inputs::resultUV[linear+1] = yuv.z;
 }
 
+/*
 class Range
 {
     private:
@@ -97,6 +98,28 @@ class Range
     __device__ uint8_t distance()
     {
         return range.y-range.x;
+    } 
+};
+*/
+
+class Range
+{
+    private:   
+    float m{0};
+    float m2{0};
+    int count{0}; 
+
+    public:
+    __device__ void add(uint value)
+    { 
+        m2 += value*value;
+        m += value;
+        count++;
+    }   
+
+    __device__ float distance()   
+    {
+        return 1.f/(count-1)*( m2 - (1.f/count)*m*m);
     } 
 };
 
@@ -125,54 +148,43 @@ __global__ void perPixelKernel(uint8_t *result)
     float bestFocus{0}; 
     float bestDispersion{99999999.0f}; 
     float focus = Inputs::focusRange.x;
-    Range range[5];
     for(int f=0; f<Inputs::FOCUS_STEPS; f++)
     {
+        Range range[KERNEL_WIDTH][KERNEL_WIDTH];
         for(int i=0; i<INPUT_COUNT; i++)
         {
-            int corners[]{0,0,0,0};
             int2 focusedCoords = focusCoords(i, coords, focus);
             focusedCoords.y -= KERNEL;
             focusedCoords = clampCoords(focusedCoords);
             for(int k=0; k<KERNEL_WIDTH; k++)
             {   
+                //TODO clamp maybe here to avoid shift at edges - test
                 focusedCoords.y++;
                 focusedCoords.y = min(Inputs::resolution.y, focusedCoords.y);
                 uint3 sample = loadClosestY(i, focusedCoords);
                 uint8_t *pixels = reinterpret_cast<uint8_t*>(&sample)+sample.z; 
-                if(k<=KERNEL+1)
-                {
-                    corners[0] += pixels[0]+pixels[1]+pixels[2];
-                    corners[1] += pixels[3]+pixels[4]+pixels[2];
-                }
-                if(k>=KERNEL+1)
-                {
-                    corners[2] += pixels[0]+pixels[1]+pixels[2];
-                    corners[1] += pixels[3]+pixels[4]+pixels[2];
-                }
-                for(int r=0; r<KERNEL_WIDTH-1; r++)
-                   range[r].add(corners[r]);
-
-                if(k == KERNEL+1) 
-                    range[4].add(pixels[2]);
+                for(int p=0; p<KERNEL_WIDTH; p++)
+                    range[k][p].add(pixels[p]);
             }
-            float dispersion = range[4].distance(); 
-            for(int r=0; r<KERNEL_WIDTH-1; r++)
-                dispersion += range[r].distance()*(1.0f/3);
-            if(dispersion < bestDispersion)
-            {
-                bestDispersion = dispersion;
-                bestFocus = focus;
-            } 
         }
+
+        float dispersion{0};
+        for(int i=0; i<KERNEL_WIDTH; i++)
+            for(int j=0; j<KERNEL_WIDTH; j++)
+                dispersion += range[i][j].distance(); 
+        if(dispersion < bestDispersion)
+        {
+            bestDispersion = dispersion;
+            bestFocus = focus;
+        } 
         focus += Inputs::focusStep;
     }
-
+    
     /*    
     if(coords.x == coords.y && coords.x == 0)
         printf("%f %f \n", Inputs::focusRange.x, Inputs::focusRange.y);
     static int ff=0;
-    float f=Inputs::focusRange.x+ff*0.000001;
+    float f=Inputs::focusRange.x+ff*0.0000001;
     ff++;
     if(coords.x == coords.y && coords.x == 0)
         printf("%f \n", f);
@@ -196,8 +208,8 @@ __global__ void perPixelKernel(uint8_t *result)
     yuv.x *= Inputs::inverseWeightSum;
     yuv.y *= Inputs::inverseWeightSum;
     yuv.z *= Inputs::inverseWeightSum;
-    yuv.x=((bestFocus-Inputs::focusRange.x*1.0f)/(Inputs::focusRange.y-Inputs::focusRange.x*1.0f))*255;
-    yuv.y = yuv.z = 128;
+    //yuv.x=((bestFocus-Inputs::focusRange.x)/(Inputs::focusRange.y-Inputs::focusRange.x))*255;
+    //yuv.y = yuv.z = 128;
     store({static_cast<uint8_t>(round(yuv.x)), static_cast<uint8_t>(round(yuv.y)), static_cast<uint8_t>(round(yuv.z))}, coords);
 }
 

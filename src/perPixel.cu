@@ -15,7 +15,8 @@ PerPixel::Result PerPixel::interpolate(PerPixel::InputFrames input)
     std::vector<float2> inOffsets;
     float aspect = (static_cast<float>(resolution.x)/resolution.y)/input.aspect;
     for(const auto &o : input.offsets)
-        inOffsets.push_back({(o.x/8.0f)*resolution.x, ((o.y*aspect)/8.0f)*resolution.x}); 
+        inOffsets.push_back({(o.x/8.0f)*resolution.x, ((o.y*aspect)/8.0f)*resolution.y}); 
+    
     PerPixelInterpolation::perPixel(    input.frames, input.weights,
                                         inOffsets, input.pitches,
                                          reinterpret_cast<uint8_t*>(result),

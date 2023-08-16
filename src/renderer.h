@@ -41,7 +41,7 @@ class Renderer
         bool paused{false};
         unsigned int shaderProgram;
         unsigned int texture;
-        glm::uvec2 initialResolution{1280, 720};
+        glm::uvec2 initialResolution{1920, 1080};
         const char *windowName{"Lightfield"};
         glm::vec2 mousePosition;
         GLFWwindow *window;
