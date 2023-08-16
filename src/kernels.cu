@@ -82,44 +82,27 @@ __device__ void store(uchar3 yuv, int2 coords)
     Inputs::resultUV[linear+1] = yuv.z;
 }
 
-/*
-class Range
-{
-    private:
-    uint2 range{UCHAR_MAX, 0};
-    
-    public:
-    __device__ void add(uint value)
-    {
-        range.x = umin(value, range.x);
-        range.y = umax(value, range.y);
-    }   
-
-    __device__ uint8_t distance()
-    {
-        return range.y-range.x;
-    } 
-};
-*/
 
 class Range
 {
     private:   
     float m{0};
     float m2{0};
-    int count{0}; 
+    static constexpr int COUNT{4};
+    //int count{0}; 
 
     public:
     __device__ void add(uint value)
     { 
         m2 += value*value;
         m += value;
-        count++;
+        //count++;
     }   
 
     __device__ float distance()   
     {
-        return 1.f/(count-1)*( m2 - (1.f/count)*m*m);
+        //return 1.f/(count-1)*( m2 - (1.f/count)*m*m);
+        return 1.f/(COUNT-1)*( m2 - (1.f/COUNT)*m*m);
     } 
 };
 
@@ -133,8 +116,10 @@ __device__ int2 focusCoords(int viewID, int2 coords, float focus)
 __device__ int2 clampCoords(int2 coords)
 {
     int2 result;
-    result.x = min(Inputs::resolution.x-1, max(1, coords.x));
-    result.y = min(Inputs::resolution.y-1, max(1, coords.y));
+    //result.x = min(Inputs::resolution.x-1, max(0, coords.x));
+    //result.y = min(Inputs::resolution.y-1, max(0, coords.y));
+    result.x = __vimin_s32_relu(Inputs::resolutionMinusOne.x, coords.x); 
+    result.y = __vimin_s32_relu(Inputs::resolutionMinusOne.y, coords.y); 
     return result;
 }
 
@@ -158,9 +143,8 @@ __global__ void perPixelKernel(uint8_t *result)
             focusedCoords = clampCoords(focusedCoords);
             for(int k=0; k<KERNEL_WIDTH; k++)
             {   
-                //TODO clamp maybe here to avoid shift at edges - test
                 focusedCoords.y++;
-                focusedCoords.y = min(Inputs::resolution.y, focusedCoords.y);
+                focusedCoords.y = min(Inputs::resolutionMinusOne.y, focusedCoords.y);
                 uint3 sample = loadClosestY(i, focusedCoords);
                 uint8_t *pixels = reinterpret_cast<uint8_t*>(&sample)+sample.z; 
                 for(int p=0; p<KERNEL_WIDTH; p++)
@@ -223,6 +207,8 @@ void perPixel(std::vector<CUdeviceptr> inFrames, std::vector<float> inWeights, s
     cudaMemcpyToSymbol(Inputs::focusStep, &focusStep, sizeof(int));
     cudaMemcpyToSymbol(Inputs::inverseWeightSum, &weightSum, sizeof(float));
     cudaMemcpyToSymbol(Inputs::resolution, &resolution, sizeof(int2));
+    int2 resolutionMinusOne{resolution.x-1, resolution.y-1};
+    cudaMemcpyToSymbol(Inputs::resolutionMinusOne, &resolutionMinusOne, sizeof(int2));
     cudaMemcpyToSymbol(Inputs::pitch, &pitch, sizeof(int));
     int2 doubleResolution{resolution.x*2, resolution.y*2};
     cudaMemcpyToSymbol(Inputs::doubleResolution, &doubleResolution, sizeof(int2));
