@@ -83,7 +83,8 @@ __device__ void store(uchar3 yuv, int2 coords)
 }
 
 
-class Range
+/*
+class Dispersion
 {
     private:   
     float m{0};
@@ -105,6 +106,65 @@ class Range
         return 1.f/(COUNT-1)*( m2 - (1.f/COUNT)*m*m);
     } 
 };
+*/
+
+/*
+class Dispersion
+{
+    private:
+    uchar2 minMax{255,0}; 
+
+    public:
+    __device__ void add(uint value)
+    {
+        if(value > minMax.y)
+            minMax.y = value;
+        else if(value < minMax.x)
+            minMax.x = value;
+    }   
+
+    __device__ float distance()   
+    {
+        return minMax.y-minMax.x;
+    } 
+};
+*/
+
+
+class Dispersion
+{
+    private: 
+    static constexpr int COUNT{4};
+    uint8_t values[COUNT];
+    int id{0};
+
+    public:
+    __device__ void add(uint value)
+    {
+        values[id] = value; 
+        id++;
+    }   
+
+    __device__ float distance()   
+    {
+        unsigned int result{0};
+/*                 
+        result += abs(values[0]-values[1]);
+        result += abs(values[0]-values[2]);
+        result += abs(values[0]-values[3]);
+        result += abs(values[1]-values[2]);
+        result += abs(values[1]-values[3]);
+        result += abs(values[2]-values[3]);*/
+
+        result = __usad(values[0], values[1], result);
+        result = __usad(values[0], values[2], result);
+        result = __usad(values[0], values[3], result);
+        result = __usad(values[1], values[2], result);
+        result = __usad(values[1], values[3], result);
+        result = __usad(values[2], values[3], result);
+        return result;
+    } 
+};
 
 __device__ int2 focusCoords(int viewID, int2 coords, float focus)
 {
@@ -123,19 +183,14 @@ __device__ int2 clampCoords(int2 coords)
     return result;
 }
 
-__global__ void perPixelKernel(uint8_t *result)
+__device__ float optimalFocus(int2 coords)
 {
-    int2 coords = getImgCoords();
-    if(coordsOutside(coords, Inputs::resolution))
-        return;
-    int l = linearCoords(coords, {Inputs::resolution});
- 
     float bestFocus{0}; 
     float bestDispersion{99999999.0f}; 
     float focus = Inputs::focusRange.x;
     for(int f=0; f<Inputs::FOCUS_STEPS; f++)
     {
-        Range range[KERNEL_WIDTH][KERNEL_WIDTH];
+        Dispersion range[KERNEL_WIDTH][KERNEL_WIDTH];
         for(int i=0; i<INPUT_COUNT; i++)
         {
             int2 focusedCoords = focusCoords(i, coords, focus);
@@ -163,23 +218,15 @@ __global__ void perPixelKernel(uint8_t *result)
         } 
         focus += Inputs::focusStep;
     }
-    
-    /*    
-    if(coords.x == coords.y && coords.x == 0)
-        printf("%f %f \n", Inputs::focusRange.x, Inputs::focusRange.y);
-    static int ff=0;
-    float f=Inputs::focusRange.x+ff*0.0000001;
-    ff++;
-    if(coords.x == coords.y && coords.x == 0)
-        printf("%f \n", f);
-    bestFocus = f;
-    */
-        
+    return bestFocus;
+}
 
+__device__ uchar3 focusedColor(int2 coords, float focus)
+{
     float3 yuv{0,0,0};
     for(int i=0; i<INPUT_COUNT; i++)
     {
-        int2 focusedCoords = focusCoords(i, coords, bestFocus);
+        int2 focusedCoords = focusCoords(i, coords, focus);
         focusedCoords = clampCoords(focusedCoords);
         yuv.x = __fmaf_rn(  loadY(i, focusedCoords),
                             Inputs::weights[i], yuv.x);
@@ -192,9 +239,20 @@ __global__ void perPixelKernel(uint8_t *result)
     yuv.x *= Inputs::inverseWeightSum;
     yuv.y *= Inputs::inverseWeightSum;
     yuv.z *= Inputs::inverseWeightSum;
+    return {static_cast<uint8_t>(round(yuv.x)), static_cast<uint8_t>(round(yuv.y)), static_cast<uint8_t>(round(yuv.z))};
+}
+
+__global__ void perPixelKernel(uint8_t *result)
+{
+    int2 coords = getImgCoords();
+    if(coordsOutside(coords, Inputs::resolution))
+        return; 
+    float bestFocus = optimalFocus(coords);
+    uchar3 color = focusedColor(coords, bestFocus);
+        
     //yuv.x=((bestFocus-Inputs::focusRange.x)/(Inputs::focusRange.y-Inputs::focusRange.x))*255;
     //yuv.y = yuv.z = 128;
-    store({static_cast<uint8_t>(round(yuv.x)), static_cast<uint8_t>(round(yuv.y)), static_cast<uint8_t>(round(yuv.z))}, coords);
+    store(color, coords);
 }
 
 void perPixel(std::vector<CUdeviceptr> inFrames, std::vector<float> inWeights, std::vector<float2> inOffsets, std::vector<int> inPitches, uint8_t *result, float weightSum, int2 resolution, int pitch, float2 focusRange)
