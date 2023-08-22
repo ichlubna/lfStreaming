@@ -84,6 +84,7 @@ __device__ void store(uchar3 yuv, int2 coords)
 
 
 /*
+//VAR
 class Dispersion
 {
     private:   
@@ -109,6 +110,7 @@ class Dispersion
 */
 
 /*
+//RANGE
 class Dispersion
 {
     private:
@@ -131,6 +133,7 @@ class Dispersion
 */
 
 
+//MAD
 class Dispersion
 {
     private: 
@@ -148,14 +151,9 @@ class Dispersion
     __device__ float distance()   
     {
         unsigned int result{0};
-/*                 
-        result += abs(values[0]-values[1]);
-        result += abs(values[0]-values[2]);
-        result += abs(values[0]-values[3]);
-        result += abs(values[1]-values[2]);
-        result += abs(values[1]-values[3]);
-        result += abs(values[2]-values[3]);*/
-
+      
+           
+        //result += abs(values[0]-values[1]);
         result = __usad(values[0], values[1], result);
         result = __usad(values[0], values[2], result);
         result = __usad(values[0], values[3], result);
@@ -164,6 +162,34 @@ class Dispersion
         result = __usad(values[2], values[3], result);
         return result;
     } 
+};
+
+class BlockDispersion
+{
+    private:
+    static constexpr int COUNT{4};
+    uint8_t values[KERNEL_WIDTH][KERNEL_WIDTH][4];    
+
+    public:
+    __device__ void add(int3 position, uint8_t value)
+    {
+        values[position.x][position.y][position.z] = value;
+    }
+    
+    __device__ float dispersion()
+    {
+        float dispersion{0};
+        for(int i=0; i<KERNEL_WIDTH; i++)
+            for(int j=0; j<KERNEL_WIDTH; j++)
+            {
+                uint8_t *vals = values[i][j];
+                Dispersion range;
+                for(int k=0; k<COUNT; k++)
+                    range.add(vals[k]);
+                dispersion += range.distance(); 
+            }
+        return dispersion;
+    }
 };
 
 __device__ int2 focusCoords(int viewID, int2 coords, float focus)
@@ -190,7 +216,7 @@ __device__ float optimalFocus(int2 coords)
     float focus = Inputs::focusRange.x;
     for(int f=0; f<Inputs::FOCUS_STEPS; f++)
     {
-        Dispersion range[KERNEL_WIDTH][KERNEL_WIDTH];
+        BlockDispersion block;
         for(int i=0; i<INPUT_COUNT; i++)
         {
             int2 focusedCoords = focusCoords(i, coords, focus);
@@ -203,14 +229,11 @@ __device__ float optimalFocus(int2 coords)
                 uint3 sample = loadClosestY(i, focusedCoords);
                 uint8_t *pixels = reinterpret_cast<uint8_t*>(&sample)+sample.z; 
                 for(int p=0; p<KERNEL_WIDTH; p++)
-                    range[k][p].add(pixels[p]);
+                    block.add({k, p, i}, pixels[p]);
             }
         }
 
-        float dispersion{0};
-        for(int i=0; i<KERNEL_WIDTH; i++)
-            for(int j=0; j<KERNEL_WIDTH; j++)
-                dispersion += range[i][j].distance(); 
+        float dispersion = block.dispersion();
         if(dispersion < bestDispersion)
         {
             bestDispersion = dispersion;
