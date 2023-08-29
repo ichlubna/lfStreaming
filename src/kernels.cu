@@ -77,7 +77,6 @@ __device__ void store(uchar3 yuv, int2 coords)
     int linear = linearCoords(coords, {Inputs::pitch, Inputs::resolution.y});
     Inputs::resultY[linear] = yuv.x;
     linear = linearCoords({coords.x-(coords.x&1), coords.y>>1}, {Inputs::pitch, Inputs::resolution.y});
-    uint8_t *UVPlane = reinterpret_cast<uint8_t*>(Inputs::resultY)+Inputs::resolution.y*Inputs::pitch;
     Inputs::resultUV[linear] = yuv.y;
     Inputs::resultUV[linear+1] = yuv.z;
 }
@@ -91,19 +90,16 @@ class Dispersion
     float m{0};
     float m2{0};
     static constexpr int COUNT{4};
-    //int count{0}; 
 
     public:
     __device__ void add(uint value)
     { 
         m2 += value*value;
         m += value;
-        //count++;
     }   
 
     __device__ float distance()   
     {
-        //return 1.f/(count-1)*( m2 - (1.f/count)*m*m);
         return 1.f/(COUNT-1)*( m2 - (1.f/COUNT)*m*m);
     } 
 };
@@ -138,11 +134,11 @@ class Dispersion
 {
     private: 
     static constexpr int COUNT{4};
-    uint8_t values[COUNT];
+    int values[COUNT];
     int id{0};
 
     public:
-    __device__ void add(uint value)
+    __device__ void add(int value)
     {
         values[id] = value; 
         id++;
@@ -150,16 +146,14 @@ class Dispersion
 
     __device__ float distance()   
     {
-        unsigned int result{0};
-      
-           
+        int result{0};              
         //result += abs(values[0]-values[1]);
-        result = __usad(values[0], values[1], result);
-        result = __usad(values[0], values[2], result);
-        result = __usad(values[0], values[3], result);
-        result = __usad(values[1], values[2], result);
-        result = __usad(values[1], values[3], result);
-        result = __usad(values[2], values[3], result);
+        result = __sad(values[0], values[1], result);
+        result = __sad(values[0], values[2], result);
+        result = __sad(values[0], values[3], result);
+        result = __sad(values[1], values[2], result);
+        result = __sad(values[1], values[3], result);
+        result = __sad(values[2], values[3], result);
         return result;
     } 
 };
@@ -168,7 +162,7 @@ class BlockDispersion
 {
     private:
     static constexpr int COUNT{4};
-    uint8_t values[KERNEL_WIDTH][KERNEL_WIDTH][4];    
+    uint8_t values[KERNEL_WIDTH][KERNEL_WIDTH][COUNT];    
 
     public:
     __device__ void add(int3 position, uint8_t value)
@@ -188,8 +182,37 @@ class BlockDispersion
                     range.add(vals[k]);
                 dispersion += range.distance(); 
             }
+        int tests[COUNT]{0,0,0,0};
+        for(int k=0; k<COUNT; k++)
+        {
+            tests[k] |= (values[0][0][k] > values[4][0][k])*1U;
+            tests[k] |= (values[0][0][k] > values[0][4][k])*2U;
+
+            tests[k] |= (values[1][0][k] > values[3][0][k])*4U;
+            tests[k] |= (values[0][1][k] > values[0][3][k])*8U;
+            
+            tests[k] |= (values[0][0][k] > values[4][4][k])*16U;
+            tests[k] |= (values[4][0][k] > values[0][4][k])*32U;
+            
+            tests[k] |= (values[1][0][k] > values[3][3][k])*64U;
+            tests[k] |= (values[3][0][k] > values[0][3][k])*128U;
+            
+            tests[k] |= (values[2][0][k] > values[2][4][k])*256U;
+            tests[k] |= (values[0][2][k] > values[4][2][k])*512U;
+ 
+            tests[k] |= (values[2][1][k] > values[2][3][k])*1024U;
+            tests[k] |= (values[1][2][k] > values[3][2][k])*2048U;
+        }
+        constexpr float TEST_COUNT_INV{1.0f/12};
+        int allTests = ~0U;
+        for(int k=0; k<COUNT; k++)
+        {
+            allTests &= tests[k];
+        }
+        int count = __popc(allTests);
+            dispersion *=(1.0f-count*TEST_COUNT_INV);
         return dispersion;
-    }
+    }    
 };
 
 __device__ int2 focusCoords(int viewID, int2 coords, float focus)
@@ -212,7 +235,7 @@ __device__ int2 clampCoords(int2 coords)
 __device__ float optimalFocus(int2 coords)
 {
     float bestFocus{0}; 
-    float bestDispersion{99999999.0f}; 
+    float bestDispersion{999999999999999999999999999999.0}; 
     float focus = Inputs::focusRange.x;
     for(int f=0; f<Inputs::FOCUS_STEPS; f++)
     {
