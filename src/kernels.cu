@@ -162,15 +162,34 @@ class BlockDispersion
 {
     private:
     static constexpr int COUNT{4};
+    static constexpr int COLOR_WEIGHT{KERNEL_WIDTH*KERNEL_WIDTH};
     uint8_t values[KERNEL_WIDTH][KERNEL_WIDTH][COUNT];    
+    uchar2 colors[COUNT];
 
     public:
+    __device__ void addColor(int position, uchar2 value)
+    {
+        colors[position] = value;
+    }
+
     __device__ void add(int3 position, uint8_t value)
     {
         values[position.x][position.y][position.z] = value;
     }
-    
-    __device__ float dispersion()
+   
+    __device__ float colorDispersion()
+    {
+        Dispersion colorRange[2];
+        for(int k=0; k<COUNT; k++)
+        {
+            colorRange[0].add(colors[k].x);
+            colorRange[1].add(colors[k].y);
+        }
+        float dispersion{0};
+        dispersion = colorRange[0].distance() + colorRange[1].distance();
+        return dispersion;
+    }
+    __device__ float dispersionOverElements()
     {
         float dispersion{0};
         for(int i=0; i<KERNEL_WIDTH; i++)
@@ -182,6 +201,11 @@ class BlockDispersion
                     range.add(vals[k]);
                 dispersion += range.distance(); 
             }
+        return dispersion;
+    }
+
+    __device__ float interElementMultiplier()
+    {
         int tests[COUNT]{0,0,0,0};
         for(int k=0; k<COUNT; k++)
         {
@@ -210,8 +234,15 @@ class BlockDispersion
             allTests &= tests[k];
         }
         int count = __popc(allTests);
-            dispersion *=(1.0f-count*TEST_COUNT_INV);
-        return dispersion;
+        return (1.0f-count*TEST_COUNT_INV);
+    }
+ 
+    __device__ float dispersion()
+    {
+        float dispersion{0};
+        dispersion = dispersionOverElements();
+        dispersion += colorDispersion()*COLOR_WEIGHT;
+        return dispersion*interElementMultiplier();
     }    
 };
 
@@ -235,7 +266,7 @@ __device__ int2 clampCoords(int2 coords)
 __device__ float optimalFocus(int2 coords)
 {
     float bestFocus{0}; 
-    float bestDispersion{999999999999999999999999999999.0}; 
+    float bestDispersion{9999999.0f}; 
     float focus = Inputs::focusRange.x;
     for(int f=0; f<Inputs::FOCUS_STEPS; f++)
     {
@@ -245,6 +276,8 @@ __device__ float optimalFocus(int2 coords)
             int2 focusedCoords = focusCoords(i, coords, focus);
             focusedCoords.y -= KERNEL;
             focusedCoords = clampCoords(focusedCoords);
+            uchar2 color = loadUV(i, focusedCoords);
+            block.addColor(i, color);
             for(int k=0; k<KERNEL_WIDTH; k++)
             {   
                 focusedCoords.y++;
