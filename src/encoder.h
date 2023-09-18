@@ -111,7 +111,7 @@ class Encoder
         size_t calculateCrf(StreamFormat format, float quality) const;
         size_t timeFrameCount{0};
         StreamFormat stringToFormat(std::string) const;
-        void encodeTimeFrame(std::string inputDir, float quality, std::string format, float aspect, glm::vec2 focusRange);
+        void encodeTimeFrame(std::string inputDir, float quality, std::string format, float aspect, glm::vec2 focusRange, glm::ivec2 keyCoords);
         void checkDir(std::string path);
         std::unique_ptr<Muxing::Muxer> muxer;
         size_t currentFrame{0};

@@ -49,23 +49,25 @@ void Encoder::checkDir(std::string path)
 
 void Encoder::encode(std::string inputDir, std::string outputFile, float quality, std::string format, glm::ivec2 keyCoords, int keyInterval, float aspect, glm::vec2 focusRange)
 {
-    if(keyCoords.x + keyInterval >= 0)
+    if(keyInterval >= 0)
         throw std::runtime_error("Not implemented yet.");
     checkDir(inputDir);
     auto timeFrameDirs = Muxing::listPath(inputDir);
     timeFrameCount = timeFrameDirs.size();
     for(auto const &dir : timeFrameDirs)
-        encodeTimeFrame(inputDir / dir, quality, format, aspect, focusRange);
+        encodeTimeFrame(inputDir / dir, quality, format, aspect, focusRange, keyCoords);
     muxer->save(outputFile);
 }
 
-void Encoder::encodeTimeFrame(std::string inputDir, float quality, std::string format, float aspect, glm::vec2 focusRange)
+void Encoder::encodeTimeFrame(std::string inputDir, float quality, std::string format, float aspect, glm::vec2 focusRange, glm::ivec2 keyCoords)
 {
     checkDir(inputDir);
     auto files = Muxing::listPath(inputDir);
     auto lastFileCoords = Muxing::parseFilename(*files.rbegin()) + glm::uvec2(1);
     auto colsRows = lastFileCoords;
-    auto referenceCoords = lastFileCoords / glm::uvec2(2);
+    auto referenceCoords = keyCoords;
+    if(keyCoords == glm::ivec2(-1,-1))
+        referenceCoords = lastFileCoords / glm::uvec2(2);
     auto videoFormat = stringToFormat(format);
     size_t crf = calculateCrf(videoFormat, quality);
 

@@ -26,11 +26,11 @@ int main(int argc, char **argv)
                           "-- higher value mean better quality but larger file\n"
                           "-f - format of the video stream: H265, AV1\n"
                           "-o - output file\n"
+                          "-a - aspect ratio of the capturing camera grid (horizontal/vertical space between the cameras)\n"
+                          "-s - normalized focus range - the maximum and minimum disparity between input images, default is from zero to half of image width - 0.0_0.5\n"
                           "The automatic keyframe detection is not used if the arguments below are specified.\n"
                           "-g - GOP size - interval of keyframes in time frames\n"
                           "-k - coordinates of reference frame in the grid, e.g.: 0_0\n"
-                          "-a - aspect ratio of the capturing camera grid (horizontal/vertical space between the cameras)\n"
-                          "-s - normalized focus range - the maximum and minimum disparity between input images, default is from zero to half of image width - 0.0_0.5\n"
                         };
     if(args.printHelpIfPresent(helpText))
         return 0;
