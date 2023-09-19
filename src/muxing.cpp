@@ -29,11 +29,10 @@ size_t Muxing::Muxer::getLinearIndex(glm::ivec3 colsRowsTime) const
     return data.gridSize() * colsRowsTime.z + colsRowsTime.y * data.colsRows().x + colsRowsTime.x;
 }
 
-void Muxing::Muxer::endTimeFrame(glm::uvec2 referenceCoords)
+void Muxing::Muxer::endTimeFrame(glm::uvec2 referenceCoords, size_t currentFrame)
 {
-    unsigned int referenceID = getLinearIndex({referenceCoords, frameNumber});
+    unsigned int referenceID = getLinearIndex({referenceCoords, currentFrame});
     data.references.push_back(referenceID);
-    frameNumber++;
 }
 
 void Muxing::EncodedData::addData(const std::vector<uint8_t> *packetData)

@@ -49,17 +49,17 @@ void Encoder::checkDir(std::string path)
 
 void Encoder::encode(std::string inputDir, std::string outputFile, float quality, std::string format, glm::ivec2 keyCoords, int keyInterval, float aspect, glm::vec2 focusRange)
 {
-    if(keyInterval >= 0)
-        throw std::runtime_error("Not implemented yet.");
+    if(keyInterval < 1)
+        throw std::runtime_error("The GoP interval can't be lower than 1!");
     checkDir(inputDir);
     auto timeFrameDirs = Muxing::listPath(inputDir);
     timeFrameCount = timeFrameDirs.size();
     for(auto const &dir : timeFrameDirs)
-        encodeTimeFrame(inputDir / dir, quality, format, aspect, focusRange, keyCoords);
+        encodeTimeFrame(inputDir / dir, quality, format, aspect, focusRange, keyCoords, keyInterval);
     muxer->save(outputFile);
 }
 
-void Encoder::encodeTimeFrame(std::string inputDir, float quality, std::string format, float aspect, glm::vec2 focusRange, glm::ivec2 keyCoords)
+void Encoder::encodeTimeFrame(std::string inputDir, float quality, std::string format, float aspect, glm::vec2 focusRange, glm::ivec2 keyCoords, int keyInterval)
 {
     checkDir(inputDir);
     auto files = Muxing::listPath(inputDir);
@@ -71,34 +71,41 @@ void Encoder::encodeTimeFrame(std::string inputDir, float quality, std::string f
     auto videoFormat = stringToFormat(format);
     size_t crf = calculateCrf(videoFormat, quality);
 
-    std::cout << "Time frame " << ++currentFrame << " of " << timeFrameCount << std::endl;
+    std::cout << "Time frame " << currentFrame+1 << " of " << timeFrameCount << std::endl;
     std::cout << "Encoding..." << std::endl;
     LoadingBar bar(files.size() + 1, true);
 
-    size_t referenceIndex = referenceCoords.y * colsRows.x + referenceCoords.x;
-    std::set<std::filesystem::path>::iterator it = files.begin();
-    std::advance(it, referenceIndex);
-    std::string referenceFrame = *it;
     std::filesystem::path path{inputDir};
-    PairEncoder refFrame(path / referenceFrame, path / referenceFrame, crf, videoFormat);
+    if((currentFrame % keyInterval) == 0)
+    {
+        size_t referenceIndex = referenceCoords.y * colsRows.x + referenceCoords.x;
+        std::set<std::filesystem::path>::iterator it = files.begin();
+        std::advance(it, referenceIndex);
+        std::string referenceFrame = *it;
+        lastReferenceFrame.fileName = path / referenceFrame;
+        lastReferenceFrame.timeFrame = currentFrame;
+        lastReferenceFrame.coords = referenceCoords;
+    }
+    PairEncoder refFrame(lastReferenceFrame.fileName, lastReferenceFrame.fileName, crf, videoFormat);
     auto resolution = refFrame.getResolution();
 
     if(!muxer->isInitialized())
         muxer->init(resolution, colsRows, videoFormat, timeFrameCount, aspect, focusRange);
 
     for(auto const &file : files)
-        if(referenceFrame == file)
+        if(lastReferenceFrame.fileName == path / file)
         {
             *muxer << refFrame.getReferencePacket();
             bar.add();
         }
         else
         {
-            PairEncoder newFrame(path / referenceFrame, path / file, crf, videoFormat);
+            PairEncoder newFrame(lastReferenceFrame.fileName, path / file, crf, videoFormat);
             bar.add();
             *muxer << newFrame.getFramePacket();
         }
-    muxer->endTimeFrame(referenceCoords);
+    muxer->endTimeFrame(lastReferenceFrame.coords, lastReferenceFrame.timeFrame);
+    currentFrame++;
     bar.add();
 }
 

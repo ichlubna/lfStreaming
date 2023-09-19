@@ -70,14 +70,13 @@ class Muxing
                 {
                     return initialized;
                 }
-                void endTimeFrame(glm::uvec2 referenceCoords);
+                void endTimeFrame(glm::uvec2 referenceCoords, size_t currentFrame);
 
             private:
                 [[nodiscard]] size_t getLinearIndex(glm::ivec3 colsRowsTime) const;
                 void addPacket(const std::vector<uint8_t> *packetData);
                 EncodedData data;
                 bool initialized{false};
-                size_t frameNumber{0};
         };
 
         class Demuxer
