@@ -30,6 +30,8 @@ set(SOURCES_ENCODER
 src/muxing.cpp
 src/lfEncoderApp.cpp
 src/encoder.cpp
+src/frame.cpp
+src/keyFrameAnalyzer.cpp
 src/libs/loadingBar/loadingbar.hpp
 src/libs/arguments/arguments.hpp
 )
@@ -55,7 +57,7 @@ include_directories(${CUDAToolkit_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} glm glfw GLEW::GLEW ${OPENGL_LIBRARIES} ${CUDA_LIBRARIES} nvcuvid cuda)
 target_compile_options(${PROJECT_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-Xcudafe --diag_suppress=esa_on_defaulted_function_ignored>)
 
-target_link_libraries(${ENCODER} ffmpeg swscale)
+target_link_libraries(${ENCODER} ffmpeg swscale avfilter)
 
 add_custom_target(format WORKING_DIRECTORY ${CMAKE_PROJECT_DIR})
 add_custom_command(TARGET format COMMAND ${ASTYLE_BINARY} ${CMAKE_SOURCE_DIR}/src/*.cpp,*.h,*.cu ${ASTYLE_OPTIONS})

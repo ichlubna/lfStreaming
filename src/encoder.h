@@ -1,13 +1,10 @@
-extern "C" {
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
-}
 #include <glm/glm.hpp>
 #include <vector>
 #include <string>
 #include <set>
 #include <memory>
 #include "muxing.h"
+#include "keyFrameAnalyzer.h"
 
 class Encoder
 {
@@ -59,25 +56,6 @@ class Encoder
         class PairEncoder
         {
             public:
-                class Frame
-                {
-                    public:
-                        Frame(std::string file);
-                        ~Frame();
-                        const AVFrame *getFrame() const
-                        {
-                            return frame;
-                        };
-
-                    private:
-                        AVFormatContext *formatContext;
-                        AVCodec *codec;
-                        AVStream *stream;
-                        AVCodecContext *codecContext;
-                        AVFrame *frame;
-                        AVPacket *packet;
-                };
-
                 PairEncoder(std::string ref, std::string frame, size_t inCrf, Encoder::StreamFormat inFormat) : referenceFile(ref), frameFile(frame), crf{inCrf}, format{inFormat}
                 {
                     encode();
