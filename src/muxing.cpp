@@ -46,9 +46,9 @@ void Muxing::EncodedData::initHeader(glm::uvec2 resolution, glm::uvec2 colsRows,
     header = {  resolution.x, resolution.y,
                 colsRows.x, colsRows.y,
                 format, timeFrameCount,
-                static_cast<unsigned int>(aspect*Muxing::EncodedData::FIXED_FLOAT_MULTIPLIER),
-                static_cast<unsigned int>(focusRange.x*Muxing::EncodedData::FIXED_FLOAT_MULTIPLIER),
-                static_cast<unsigned int>(focusRange.y*Muxing::EncodedData::FIXED_FLOAT_MULTIPLIER)
+                static_cast<unsigned int>(aspect * Muxing::EncodedData::FIXED_FLOAT_MULTIPLIER),
+                static_cast<unsigned int>(focusRange.x * Muxing::EncodedData::FIXED_FLOAT_MULTIPLIER),
+                static_cast<unsigned int>(focusRange.y * Muxing::EncodedData::FIXED_FLOAT_MULTIPLIER)
              };
     size_t count{colsRows.x *colsRows.y * timeFrameCount};
     offsets.reserve(count);
@@ -64,9 +64,6 @@ void Muxing::Muxer::save(std::string filePath)
     fos.write(reinterpret_cast<const char *>(data.offsets.data()), data.offsets.size()*BYTE_COUNT);
     fos.write(reinterpret_cast<const char *>(data.references.data()), data.references.size()*BYTE_COUNT);
     fos.write(reinterpret_cast<const char *>(data.packets.data()), data.packets.size());
-    //for(auto o : data.offsets) std::cerr << o << " ";
-    //std::cerr << std::endl;
-    //std::cerr << data.header.size() << " " << data.offsets.size() << " " << data.references.size() << " " << data.packets.size() << std::endl;
     fos.close();
 }
 
@@ -101,7 +98,6 @@ Muxing::Demuxer::Demuxer(std::string filePath)
 
     data.packets.resize(data.offsets.back());
     fis.read(reinterpret_cast<char *>(data.packets.data()), data.offsets.back());
-    //std::cerr << EncodedData::HEADER_VALUES_COUNT << " " << 1+data.gridSize()*data.timeFrameCount() << " " << data.timeFrameCount() << " " << data.packets.size();
 }
 
 size_t Muxing::Demuxer::getLinearIndex(glm::ivec3 colsRowsTime) const

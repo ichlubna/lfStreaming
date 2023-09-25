@@ -138,11 +138,11 @@ void VideoDecoder::clearBuffer()
     //initFrame();
 }
 
-const std::vector<void*> VideoDecoder::getFramePointers() const
+const std::vector<void *> VideoDecoder::getFramePointers() const
 {
     std::vector<void *> ptrs(frames.size());
     for(size_t i = 0; i < frames.size(); i++)
-        ptrs[i] = const_cast<void*>(reinterpret_cast<const void*>(&(frames[i].frame)));
+        ptrs[i] = const_cast<void *>(reinterpret_cast<const void *>(&(frames[i].frame)));
     return ptrs;
 }
 

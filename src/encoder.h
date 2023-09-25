@@ -60,21 +60,21 @@ class Encoder
                 {
                     encode();
                 };
-                const std::vector<uint8_t> *getFramePacket() const
+                [[nodiscard]] const std::vector<uint8_t> *getFramePacket() const
                 {
                     return &framePacket;
                 };
-                const std::vector<uint8_t> *getReferencePacket() const
+                [[nodiscard]] const std::vector<uint8_t> *getReferencePacket() const
                 {
                     return &referencePacket;
                 };
-                const glm::uvec2 getResolution() const
+                [[nodiscard]] const glm::uvec2 getResolution() const
                 {
                     return {width, height};
                 };
 
             private:
-                AVFrame *convertFrame(const AVFrame *inputFrame, AVPixelFormat pxFormat);
+                [[nodiscard]] AVFrame *convertFrame(const AVFrame *inputFrame, AVPixelFormat pxFormat) const;
                 void encode();
                 std::string referenceFile;
                 std::string frameFile;
@@ -98,7 +98,7 @@ class Encoder
         size_t timeFrameCount{0};
         StreamFormat stringToFormat(std::string) const;
         void encodeTimeFrame(std::string inputDir, float quality, std::string format, float aspect, glm::vec2 focusRange, glm::ivec2 keyCoords, int keyInterval);
-        void checkDir(std::string path);
+        void checkDir(std::string path) const;
         std::unique_ptr<Muxing::Muxer> muxer;
         size_t currentFrame{0};
 };

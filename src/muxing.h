@@ -41,11 +41,11 @@ class Muxing
                 }
                 [[nodiscard]] float aspect() const
                 {
-                    return header[6]/FIXED_FLOAT_MULTIPLIER;
+                    return header[6] / FIXED_FLOAT_MULTIPLIER;
                 }
                 [[nodiscard]] glm::vec2 focusRange() const
                 {
-                    return {header[7]/FIXED_FLOAT_MULTIPLIER, header[8]/FIXED_FLOAT_MULTIPLIER};
+                    return {header[7] / FIXED_FLOAT_MULTIPLIER, header[8] / FIXED_FLOAT_MULTIPLIER};
                 }
                 [[nodiscard]] size_t gridSize() const
                 {
@@ -104,4 +104,3 @@ class Muxing
 
     private:
 };
-

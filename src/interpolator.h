@@ -18,8 +18,8 @@ class Interpolator
                 void *output;
         };
         void interpolate(std::vector<Pair> data);
-        void registerResources(const std::vector<void*> *resources);
-        void unregisterResources(const std::vector<void*> *resources);
+        void registerResources(const std::vector<void *> *resources);
+        void unregisterResources(const std::vector<void *> *resources);
 
     private:
         enum Os {LINUX};

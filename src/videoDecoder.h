@@ -3,7 +3,6 @@
 #include <nvidia-sdk/nvcuvid.h>
 #include "muxing.h"
 
-
 #include <iostream>
 
 class VideoDecoder
@@ -56,7 +55,7 @@ class VideoDecoder
         {
             return &frames;
         };
-        [[nodiscard]] const std::vector<void*> getFramePointers() const;
+        [[nodiscard]] const std::vector<void *> getFramePointers() const;
 
     private:
         static constexpr int DECODED_COUNT{8};
@@ -92,5 +91,4 @@ class VideoDecoder
         {
             return reinterpret_cast<VideoDecoder *>(userData)->displayPicture(dispInfo);
         }
-
 };

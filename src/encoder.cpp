@@ -37,7 +37,7 @@ Encoder::StreamFormat Encoder::stringToFormat(std::string format) const
         throw std::runtime_error("The specified video stream format is not supported.");
 }
 
-void Encoder::checkDir(std::string path)
+void Encoder::checkDir(std::string path) const
 {
     if(!std::filesystem::exists(path))
         throw std::runtime_error("The path " + path + " does not exist!");
@@ -66,12 +66,12 @@ void Encoder::encodeTimeFrame(std::string inputDir, float quality, std::string f
     auto lastFileCoords = Muxing::parseFilename(*files.rbegin()) + glm::uvec2(1);
     auto colsRows = lastFileCoords;
     auto referenceCoords = keyCoords;
-    if(keyCoords == glm::ivec2(-1,-1))
+    if(keyCoords == glm::ivec2(-1, -1))
         referenceCoords = lastFileCoords / glm::uvec2(2);
     auto videoFormat = stringToFormat(format);
     size_t crf = calculateCrf(videoFormat, quality);
 
-    std::cout << "Time frame " << currentFrame+1 << " of " << timeFrameCount << std::endl;
+    std::cout << "Time frame " << currentFrame + 1 << " of " << timeFrameCount << std::endl;
     std::cout << "Encoding..." << std::endl;
     LoadingBar bar(files.size() + 1, true);
 
@@ -176,7 +176,7 @@ void Encoder::FFEncoder::encodeFrame(AVFrame *frame)
     avcodec_send_frame(codecContext, frame);
 }
 
-AVFrame *Encoder::PairEncoder::convertFrame(const AVFrame *inputFrame, AVPixelFormat pxFormat)
+AVFrame *Encoder::PairEncoder::convertFrame(const AVFrame *inputFrame, AVPixelFormat pxFormat) const
 {
     constexpr int CHANNELS{3};
     AVFrame *outputFrame = av_frame_alloc();

@@ -47,3 +47,4 @@ Frame::~Frame()
     av_frame_free(&frame);
     av_packet_free(&packet);
 }
+    

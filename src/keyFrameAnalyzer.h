@@ -7,28 +7,37 @@ extern "C" {
 class KeyFrameAnalyzer
 {
     public:
-    KeyFrameAnalyzer(std::filesystem::path directory);
-    std::filesystem::path getBestKeyFrame();
+        KeyFrameAnalyzer(std::filesystem::path directory);
+        std::filesystem::path getBestKeyFrame();
+        ~KeyFrameAnalyzer()
+        {
+            av_frame_free(&resultFrame);
+        }
 
     private:
-    class BestMetrics
-    {
-        private:
-
-        public:
-        class MetricResult
+        class BestMetrics
         {
+            private:
+
             public:
-            std::filesystem::path path;
-            float value;
+                class MetricResult
+                {
+                    public:
+                        std::filesystem::path path;
+                        float value;
+                };
+                MetricResult psnr;
+                MetricResult ssim;
+                MetricResult vmaf;
         };
-        MetricResult psnr;
-        MetricResult ssim;
-        MetricResult vmaf;
-    };
-    AVFilterGraph *filterGraph;
-    AVFilterContext *bufferSinkCtx;
-    AVFilterContext *bufferRefCtx; 
-    AVFilterContext *bufferTestCtx;
-    std::filesystem::path directory; 
+        AVFilterGraph *filterGraph;
+        AVFilterContext *bufferSinkPsnrCtx;
+        AVFilterContext *bufferSinkSsimCtx;
+        AVFilterContext *bufferSinkVmafCtx;
+        AVFilterContext *bufferRefCtx;
+        AVFilterContext *bufferTestCtx;
+        AVFrame *resultFrame = av_frame_alloc();
+        std::filesystem::path directory;
+        [[nodiscard]] float getMetric(std::string dataName, AVFilterContext *filterContext);
+        void printMetadata(AVDictionary *metadata) const;
 };

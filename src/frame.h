@@ -9,12 +9,12 @@ class Frame
     public:
         Frame(std::string file);
         ~Frame();
-        AVFrame *getFrame() const
+        [[nodiscard]] AVFrame *getFrame() const
         {
             return frame;
         };
 
-        const AVCodecContext* getCodecContext() const
+        [[nodiscard]] const AVCodecContext *getCodecContext() const
         {
             return codecContext;
         }
@@ -26,5 +26,5 @@ class Frame
         AVCodecContext *codecContext;
         AVFrame *frame;
         AVPacket *packet;
-    
+
 };

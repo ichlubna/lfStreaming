@@ -48,18 +48,18 @@ class Decoder
                 Frame frames[InterpolationInfo::FRAME_COUNT];
 
                 void compute(glm::uvec2 gridSize, glm::vec2 position);
-                float interWeight(Order order) const
+                [[nodiscard]] float interWeight(Order order) const
                 {
                     auto o = orderIDs[order];
                     float first = frames[o[0]].weight + frames[o[1]].weight;
                     float second = frames[o[2]].weight + frames[o[3]].weight;
                     return interWeightVal(first, second);
                 }
-                float interWeight(FramePosition first, FramePosition second) const
+                [[nodiscard]] float interWeight(FramePosition first, FramePosition second) const
                 {
                     return interWeightVal(frames[first].weight, frames[second].weight);
                 }
-                float interWeightVal(float first, float second) const
+                [[nodiscard]] float interWeightVal(float first, float second) const
                 {
                     return first / (first + second);
                 }
@@ -95,13 +95,13 @@ class Decoder
                 CUdeviceptr frame;
                 size_t pitch;
         };
-        template<bool measure=false>
+        template<bool measure = false>
         InterpolationResult decodeAndInterpolate(glm::vec2 position);
-        template<bool measure=false>
-        InterpolationResult interpolateOptical(const std::vector<VideoDecoder::DecodedFrame> *frames, const std::vector<void*> framePtrs, Decoder::SelectedFrames::InterpolationInfo guide);
-        template<bool measure=false>
-        InterpolationResult interpolatePerPixel(const std::vector<VideoDecoder::DecodedFrame> *frames, const std::vector<void*> framePtrs, Decoder::SelectedFrames::InterpolationInfo guide);
+        template<bool measure = false>
+        InterpolationResult interpolateOptical(const std::vector<VideoDecoder::DecodedFrame> *frames, const std::vector<void *> framePtrs, Decoder::SelectedFrames::InterpolationInfo guide);
+        template<bool measure = false>
+        InterpolationResult interpolatePerPixel(const std::vector<VideoDecoder::DecodedFrame> *frames);
         void prepareFrames();
-        std::vector<void *> getIntermediatePtrs();
-        glm::vec2 cameraPosition();
+        [[nodiscard]] std::vector<void *> getIntermediatePtrs();
+        [[nodiscard]] glm::vec2 cameraPosition() const;
 };

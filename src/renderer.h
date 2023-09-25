@@ -13,7 +13,7 @@ class Renderer
             mousePosition = {position.y, position.x};
             mouseMoved = true;
         };
-        glm::vec2 getMousePosition()
+        [[nodiscard]] glm::vec2 getMousePosition() const
         {
             return mousePosition;
         }
@@ -24,12 +24,12 @@ class Renderer
             return move;
         }
 
-        bool ready()
+        [[nodiscard]] bool ready() const
         {
             return prepared;
         };
 
-        bool isPaused()
+        [[nodiscard]] bool isPaused() const
         {
             return paused;
         };

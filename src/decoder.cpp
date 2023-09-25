@@ -42,7 +42,7 @@ void Decoder::setInterpolationMethod(std::string method)
     }
 }
 
-glm::vec2 Decoder::cameraPosition()
+glm::vec2 Decoder::cameraPosition() const
 {
     auto mouse = renderer->getMousePosition();
     mouse = {mouse.y, mouse.x};
@@ -51,18 +51,19 @@ glm::vec2 Decoder::cameraPosition()
 }
 
 void Decoder::decodeAndPlay(float framerate)
-{
+{  
+    [[assume(framerate>0)]];
     auto resolution = videoDecoder->getResolution();
     renderer->init();
     interop->setTexture(renderer->getTexture(resolution), resolution);
-    Timer<true,false> playbackTimer;
-    const int frameTime = 1000.0f/framerate;
+    Timer<true, false> playbackTimer;
+    const int frameTime = 1000.0f / framerate;
     const size_t length = videoDecoder->getTimeLength();
     while(renderer->ready())
     {
         if(framerate > 0)
             playbackTimer.start();
-       
+
         if(length > 1 || renderer->mouseChanged())
         {
             auto result = decodeAndInterpolate(cameraPosition());
@@ -111,7 +112,7 @@ std::vector<glm::vec2> Decoder::parseTrajectory(std::string textTrajectory) cons
 void Decoder::SelectedFrames::compute(glm::uvec2 gridSize, glm::vec2 position)
 {
     glm::vec2 maxCoords{gridSize - 1u};
-    glm::vec2 gridPosition{maxCoords*position};
+    glm::vec2 gridPosition{maxCoords * position};
     glm::ivec2 downCoords{glm::floor(gridPosition)};
     glm::ivec2 upCoords{glm::ceil(gridPosition)};
 
@@ -121,19 +122,19 @@ void Decoder::SelectedFrames::compute(glm::uvec2 gridSize, glm::vec2 position)
 
     currentCoords = {downCoords};
     weight = (1 - unitPos.x) * (1 - unitPos.y);
-    frames[TOP_LEFT] = {currentCoords, weight, gridPosition-glm::vec2(currentCoords)};
+    frames[TOP_LEFT] = {currentCoords, weight, gridPosition - glm::vec2(currentCoords)};
 
     currentCoords = {upCoords.x, downCoords.y};
     weight = unitPos.x * (1 - unitPos.y);
-    frames[TOP_RIGHT] = {currentCoords, weight, gridPosition-glm::vec2(currentCoords)};
+    frames[TOP_RIGHT] = {currentCoords, weight, gridPosition - glm::vec2(currentCoords)};
 
     currentCoords = {downCoords.x, upCoords.y};
     weight = (1 - unitPos.x) * unitPos.y;
-    frames[BOTTOM_LEFT] = {currentCoords, weight, gridPosition-glm::vec2(currentCoords)};
+    frames[BOTTOM_LEFT] = {currentCoords, weight, gridPosition - glm::vec2(currentCoords)};
 
     currentCoords = {upCoords};
     weight = unitPos.x * unitPos.y;
-    frames[BOTTOM_RIGHT] = {currentCoords, weight, gridPosition-glm::vec2(currentCoords)};
+    frames[BOTTOM_RIGHT] = {currentCoords, weight, gridPosition - glm::vec2(currentCoords)};
 }
 
 Decoder::SelectedFrames::InterpolationInfo Decoder::SelectedFrames::guide(Order order)
@@ -150,7 +151,7 @@ Decoder::SelectedFrames::InterpolationInfo Decoder::SelectedFrames::guide(Order 
 
 Decoder::IntermediateFrame::IntermediateFrame(glm::ivec2 resolution)
 {
-    if(cuMemAllocPitch(&frame, &pitch, resolution.x, resolution.y * 2, 4) != CUDA_SUCCESS)
+    [[unlikely]]if(cuMemAllocPitch(&frame, &pitch, resolution.x, resolution.y * 2, 4) != CUDA_SUCCESS)
         throw std::runtime_error("Cannot allocate memory for interpolation results.");
 }
 
@@ -172,8 +173,8 @@ std::vector<void *> Decoder::getIntermediatePtrs()
 template<bool measure>
 Decoder::InterpolationResult Decoder::decodeAndInterpolate(glm::vec2 position)
 {
-    Timer<true,true> timer;
-    if constexpr (measure)
+    Timer<true, true> timer;
+    if constexpr(measure)
     {
         std::cout << "Decoding the frames..." << std::endl;
         timer.start();
@@ -189,52 +190,51 @@ Decoder::InterpolationResult Decoder::decodeAndInterpolate(glm::vec2 position)
     auto framePtrs = videoDecoder->getFramePointers();
     auto frames = videoDecoder->getFrames();
 
-    if constexpr (measure)
+    if constexpr(measure)
     {
         timer.stop().printElapsed();
     }
     if(usePerPixel)
-        return interpolatePerPixel<measure>(frames, framePtrs, guide);    
-    return interpolateOptical<measure>(frames, framePtrs, guide);    
+        return interpolatePerPixel<measure>(frames);
+    return interpolateOptical<measure>(frames, framePtrs, guide);
 }
 
 template<bool measure>
-Decoder::InterpolationResult Decoder::interpolatePerPixel(const std::vector<VideoDecoder::DecodedFrame> *frames, const std::vector<void*> framePtrs, Decoder::SelectedFrames::InterpolationInfo guide)
+Decoder::InterpolationResult Decoder::interpolatePerPixel(const std::vector<VideoDecoder::DecodedFrame> *frames)
 {
-    Timer<true,true> timer;
-    if constexpr (measure)
+    Timer<true, true> timer;
+    if constexpr(measure)
     {
         std::cout << "Interpolating new view..." << std::endl;
         timer.start();
     }
-    
+
     PerPixel::InputFrames input;
-    for(size_t i=0; i<PerPixel::InputFrames::COUNT; i++)
+    for(size_t i = 0; i < PerPixel::InputFrames::COUNT; i++)
     {
         input.frames.push_back(frames->at(i).frame);
         input.weights.push_back(framePicker.frames[i].weight);
         input.inverseWeightSum += input.weights.back();
         input.pitches.push_back(frames->at(i).pitch);
         input.offsets.push_back(framePicker.frames[i].offset);
-    } 
-    input.inverseWeightSum = 1.0f/input.inverseWeightSum;
+    }
+    input.inverseWeightSum = 1.0f / input.inverseWeightSum;
     input.aspect = videoDecoder->getGridAspect();
-    input.focusRange = videoDecoder->getFocusRange(); 
-    auto result = perPixel->interpolate(input);    
+    input.focusRange = videoDecoder->getFocusRange();
+    auto result = perPixel->interpolate(input);
 
-    if constexpr (measure)
+    if constexpr(measure)
     {
         timer.stop().printElapsed();
     }
     return {result.result, result.pitch};
 }
 
-
 template<bool measure>
-Decoder::InterpolationResult Decoder::interpolateOptical(const std::vector<VideoDecoder::DecodedFrame> *frames, const std::vector<void*> framePtrs, Decoder::SelectedFrames::InterpolationInfo guide)
+Decoder::InterpolationResult Decoder::interpolateOptical(const std::vector<VideoDecoder::DecodedFrame> *frames, const std::vector<void *> framePtrs, Decoder::SelectedFrames::InterpolationInfo guide)
 {
-    Timer<true,true> timer;
-    if constexpr (measure)
+    Timer<true, true> timer;
+    if constexpr(measure)
     {
         std::cout << "Interpolating new view..." << std::endl;
         timer.start();
@@ -262,7 +262,7 @@ Decoder::InterpolationResult Decoder::interpolateOptical(const std::vector<Video
         interpolator->interpolate({pair});
     }
 
-    if constexpr (measure)
+    if constexpr(measure)
     {
         timer.stop().printElapsed();
     }

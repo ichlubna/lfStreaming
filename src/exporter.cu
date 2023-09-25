@@ -2,7 +2,7 @@
 #include "exporter.h"
 #include "kernels.h"
 
-void Exporter::storeImage(std::vector<uint8_t> *data, glm::uvec2 resolution, std::string path, bool flipY)
+void Exporter::storeImage(std::vector<uint8_t> *data, glm::uvec2 resolution, std::string path, bool flipY) const
 {
     std::ofstream fs(path, std::ios::out | std::ios::binary);
     if(!fs.is_open())
@@ -27,7 +27,7 @@ void Exporter::storeImage(std::vector<uint8_t> *data, glm::uvec2 resolution, std
         }
 }
 
-std::pair<cudaArray *, cudaSurfaceObject_t> Exporter::createSurfaceObject(glm::ivec2 size)
+std::pair<cudaArray *, cudaSurfaceObject_t> Exporter::createSurfaceObject(glm::ivec2 size) const
 {
     cudaChannelFormatDesc channels = cudaCreateChannelDesc(8, 8, 8, 8, cudaChannelFormatKindUnsigned);
     cudaArray *arr;
@@ -41,7 +41,7 @@ std::pair<cudaArray *, cudaSurfaceObject_t> Exporter::createSurfaceObject(glm::i
     return {arr, surfObj};
 }
 
-void Exporter::exportImage(CUdeviceptr data, size_t pitch, glm::ivec2 size, std::string path)
+void Exporter::exportImage(CUdeviceptr data, size_t pitch, glm::ivec2 size, std::string path) const
 {
     auto surfaceData = createSurfaceObject(size);
     Conversion::NV12ToRGBA(reinterpret_cast<uint8_t *>(data), surfaceData.second, {size.x, size.y}, pitch);

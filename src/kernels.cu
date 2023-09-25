@@ -2,17 +2,17 @@
 #include <stdio.h>
 #include "kernels.h"
 
-__device__ int linearCoords(int2 coords, int2 resolution)
+[[nodiscard]] __device__ int linearCoords(int2 coords, int2 resolution)
 {
     int linearCoords = coords.y * resolution.x + coords.x;
     return linearCoords;
 }
-__device__ bool coordsOutside(int2 coords, int2 resolution)
+[[nodiscard]] __device__ bool coordsOutside(int2 coords, int2 resolution)
 {
     return (coords.x >= resolution.x || coords.y >= resolution.y);
 }
 
-__device__ int2 getImgCoords()
+[[nodiscard]] __device__ int2 getImgCoords()
 {
     int2 coords;
     coords.x = (threadIdx.x + blockIdx.x * blockDim.x);
@@ -22,86 +22,85 @@ __device__ int2 getImgCoords()
 
 namespace PerPixelInterpolation
 {
-    namespace Inputs
-    {
-        __constant__ float weights[INPUT_COUNT];
-        __constant__ int pitches[INPUT_COUNT];
-        __constant__ size_t framesY[INPUT_COUNT];
-        __constant__ size_t framesUV[INPUT_COUNT];
-        __constant__ float2 offsets[INPUT_COUNT];
-        __constant__ int pixelCounts[INPUT_COUNT];
-        __constant__ uint8_t* resultY;
-        __constant__ uint8_t* resultUV;
-        __constant__ float inverseWeightSum;
-        __constant__ int2 resolution;
-        __constant__ int2 doubleResolution;
-        __constant__ int2 resolutionMinusOne;
-        __constant__ int pitch;
-        __constant__ int pixelCount;
-        __constant__ float2 focusRange;
-        constexpr int FOCUS_STEPS{16};
-        __constant__ float focusStep;
-    }
-constexpr int KERNEL{2}; 
-constexpr int KERNEL_WIDTH{KERNEL*2+1};
+namespace Inputs
+{
+__constant__ float weights[INPUT_COUNT];
+__constant__ int pitches[INPUT_COUNT];
+__constant__ size_t framesY[INPUT_COUNT];
+__constant__ size_t framesUV[INPUT_COUNT];
+__constant__ float2 offsets[INPUT_COUNT];
+__constant__ int pixelCounts[INPUT_COUNT];
+__constant__ uint8_t *resultY;
+__constant__ uint8_t *resultUV;
+__constant__ float inverseWeightSum;
+__constant__ int2 resolution;
+__constant__ int2 doubleResolution;
+__constant__ int2 resolutionMinusOne;
+__constant__ int pitch;
+__constant__ int pixelCount;
+__constant__ float2 focusRange;
+constexpr int FOCUS_STEPS{16};
+__constant__ float focusStep;
+}
+constexpr int KERNEL{2};
+constexpr int KERNEL_WIDTH{KERNEL * 2 + 1};
 
-__device__ uint8_t loadY(int frameID, int2 coords)
+[[nodiscard]] __device__ uint8_t loadY(int frameID, int2 coords)
 {
     int linear = linearCoords(coords, {Inputs::pitches[frameID], Inputs::resolution.y});
-    return reinterpret_cast<uint8_t*>(Inputs::framesY[frameID])[linear];
+    return reinterpret_cast<uint8_t *>(Inputs::framesY[frameID])[linear];
 }
 
-__device__ uint3 loadClosestY(int frameID, int2 coords)
-{  
-    constexpr int UNIT_SIZE{4}; 
+[[nodiscard]] __device__ uint3 loadClosestY(int frameID, int2 coords)
+{
+    constexpr int UNIT_SIZE{4};
     int linear = linearCoords(coords, {Inputs::pitches[frameID], Inputs::resolution.y}) - KERNEL;
-    if(linear<0)
-        linear=0;
-    int roundLinear = linear/UNIT_SIZE;
-    uint offset = linear-roundLinear*UNIT_SIZE;
+    if(linear < 0)
+        linear = 0;
+    int roundLinear = linear / UNIT_SIZE;
+    uint offset = linear - roundLinear * UNIT_SIZE;
     uint2 sample;
-    sample.x = reinterpret_cast<uint*>(Inputs::framesY[frameID])[roundLinear];
-    sample.y = reinterpret_cast<uint*>(Inputs::framesY[frameID])[roundLinear+1];
+    sample.x = reinterpret_cast<uint *>(Inputs::framesY[frameID])[roundLinear];
+    sample.y = reinterpret_cast<uint *>(Inputs::framesY[frameID])[roundLinear + 1];
     return {sample.x, sample.y, offset};
 }
 
-__device__ uchar2 loadUV(int frameID, int2 coords)
+[[nodiscard]] __device__ uchar2 loadUV(int frameID, int2 coords)
 {
-    int linear = linearCoords({coords.x-(coords.x&1), coords.y>>1}, {Inputs::pitches[frameID], Inputs::resolution.y});
-    uint8_t *UVPlane = reinterpret_cast<uint8_t*>(Inputs::framesY[frameID])+Inputs::pixelCounts[frameID];
-    return {UVPlane[linear], UVPlane[linear+1]}; 
+    int linear = linearCoords({coords.x - (coords.x & 1), coords.y >> 1}, {Inputs::pitches[frameID], Inputs::resolution.y});
+    uint8_t *UVPlane = reinterpret_cast<uint8_t *>(Inputs::framesY[frameID]) + Inputs::pixelCounts[frameID];
+    return {UVPlane[linear], UVPlane[linear + 1]};
 }
 
 __device__ void store(uchar3 yuv, int2 coords)
 {
     int linear = linearCoords(coords, {Inputs::pitch, Inputs::resolution.y});
     Inputs::resultY[linear] = yuv.x;
-    linear = linearCoords({coords.x-(coords.x&1), coords.y>>1}, {Inputs::pitch, Inputs::resolution.y});
+    linear = linearCoords({coords.x - (coords.x & 1), coords.y >> 1}, {Inputs::pitch, Inputs::resolution.y});
     Inputs::resultUV[linear] = yuv.y;
-    Inputs::resultUV[linear+1] = yuv.z;
+    Inputs::resultUV[linear + 1] = yuv.z;
 }
-
 
 /*
 //VAR
 class Dispersion
 {
-    private:   
+    private:
     float m{0};
     float m2{0};
     static constexpr int COUNT{4};
 
     public:
     __device__ void add(uint value)
-    { 
+    {
         m2 += value*value;
         m += value;
-    }   
+    }
 
-    __device__ float distance()   
+    __device__ float distance()
     {
         return 1.f/(COUNT-1)*( m2 - (1.f/COUNT)*m*m);
-    } 
+    }
 };
 */
 
@@ -110,7 +109,7 @@ class Dispersion
 class Dispersion
 {
     private:
-    uchar2 minMax{255,0}; 
+    uchar2 minMax{255,0};
 
     public:
     __device__ void add(uint value)
@@ -119,172 +118,172 @@ class Dispersion
             minMax.y = value;
         else if(value < minMax.x)
             minMax.x = value;
-    }   
+    }
 
-    __device__ float distance()   
+    __device__ float distance()
     {
         return minMax.y-minMax.x;
-    } 
+    }
 };
 */
-
 
 //MAD
 class Dispersion
 {
-    private: 
-    static constexpr int COUNT{4};
-    int values[COUNT];
-    int id{0};
+    private:
+        static constexpr int COUNT{4};
+        int values[COUNT];
+        int id{0};
 
     public:
-    __device__ void add(int value)
-    {
-        values[id] = value; 
-        id++;
-    }   
+        __device__ void add(int value)
+        {
+            values[id] = value;
+            id++;
+        }
 
-    __device__ float distance()   
-    {
-        int result{0};              
-        //result += abs(values[0]-values[1]);
-        result = __sad(values[0], values[1], result);
-        result = __sad(values[0], values[2], result);
-        result = __sad(values[0], values[3], result);
-        result = __sad(values[1], values[2], result);
-        result = __sad(values[1], values[3], result);
-        result = __sad(values[2], values[3], result);
-        return result;
-    } 
+        [[nodiscard]] __device__ float distance() const
+        {
+            int result{0};
+            //result += abs(values[0]-values[1]);
+            result = __sad(values[0], values[1], result);
+            result = __sad(values[0], values[2], result);
+            result = __sad(values[0], values[3], result);
+            result = __sad(values[1], values[2], result);
+            result = __sad(values[1], values[3], result);
+            result = __sad(values[2], values[3], result);
+            return result;
+        }
 };
 
 class BlockDispersion
 {
     private:
-    static constexpr int COUNT{4};
-    static constexpr int COLOR_WEIGHT{KERNEL_WIDTH*KERNEL_WIDTH};
-    uint8_t values[KERNEL_WIDTH][KERNEL_WIDTH][COUNT];    
-    uchar2 colors[COUNT];
+        static constexpr int COUNT{4};
+        static constexpr int COLOR_WEIGHT{KERNEL_WIDTH * KERNEL_WIDTH};
+        uint8_t values[KERNEL_WIDTH][KERNEL_WIDTH][COUNT];
+        uchar2 colors[COUNT];
 
     public:
-    __device__ void addColor(int position, uchar2 value)
-    {
-        colors[position] = value;
-    }
-
-    __device__ void add(int3 position, uint8_t value)
-    {
-        values[position.x][position.y][position.z] = value;
-    }
-   
-    __device__ float colorDispersion()
-    {
-        Dispersion colorRange[2];
-        for(int k=0; k<COUNT; k++)
+        __device__ void addColor(int position, uchar2 value)
         {
-            colorRange[0].add(colors[k].x);
-            colorRange[1].add(colors[k].y);
+            colors[position] = value;
         }
-        float dispersion{0};
-        dispersion = colorRange[0].distance() + colorRange[1].distance();
-        return dispersion;
-    }
-    __device__ float dispersionOverElements()
-    {
-        float dispersion{0};
-        for(int i=0; i<KERNEL_WIDTH; i++)
-            for(int j=0; j<KERNEL_WIDTH; j++)
+
+        __device__ void add(int3 position, uint8_t value)
+        {
+            values[position.x][position.y][position.z] = value;
+        }
+
+        [[nodiscard]] __device__ float colorDispersion() const
+        {
+            Dispersion colorRange[2];
+            for(int k = 0; k < COUNT; k++)
             {
-                uint8_t *vals = values[i][j];
-                Dispersion range;
-                for(int k=0; k<COUNT; k++)
-                    range.add(vals[k]);
-                dispersion += range.distance(); 
+                colorRange[0].add(colors[k].x);
+                colorRange[1].add(colors[k].y);
             }
-        return dispersion;
-    }
-
-    __device__ float interElementMultiplier()
-    {
-        int tests[COUNT]{0,0,0,0};
-        for(int k=0; k<COUNT; k++)
-        {
-            tests[k] |= (values[0][0][k] > values[4][0][k])*1U;
-            tests[k] |= (values[0][0][k] > values[0][4][k])*2U;
-
-            tests[k] |= (values[1][0][k] > values[3][0][k])*4U;
-            tests[k] |= (values[0][1][k] > values[0][3][k])*8U;
-            
-            tests[k] |= (values[0][0][k] > values[4][4][k])*16U;
-            tests[k] |= (values[4][0][k] > values[0][4][k])*32U;
-            
-            tests[k] |= (values[1][0][k] > values[3][3][k])*64U;
-            tests[k] |= (values[3][0][k] > values[0][3][k])*128U;
-            
-            tests[k] |= (values[2][0][k] > values[2][4][k])*256U;
-            tests[k] |= (values[0][2][k] > values[4][2][k])*512U;
- 
-            tests[k] |= (values[2][1][k] > values[2][3][k])*1024U;
-            tests[k] |= (values[1][2][k] > values[3][2][k])*2048U;
+            float dispersion{0};
+            dispersion = colorRange[0].distance() + colorRange[1].distance();
+            return dispersion;
         }
-        constexpr float TEST_COUNT_INV{1.0f/12};
-        int allTests = ~0U;
-        for(int k=0; k<COUNT; k++)
+
+        [[nodiscard]] __device__ float dispersionOverElements() const
         {
-            allTests &= tests[k];
+            float dispersion{0};
+            for(int i = 0; i < KERNEL_WIDTH; i++)
+                for(int j = 0; j < KERNEL_WIDTH; j++)
+                {
+                    const uint8_t *vals = values[i][j];
+                    Dispersion range;
+                    for(int k = 0; k < COUNT; k++)
+                        range.add(vals[k]);
+                    dispersion += range.distance();
+                }
+            return dispersion;
         }
-        int count = __popc(allTests);
-        return (1.0f-count*TEST_COUNT_INV);
-    }
- 
-    __device__ float dispersion()
-    {
-        float dispersion{0};
-        dispersion = dispersionOverElements();
-        dispersion += colorDispersion()*COLOR_WEIGHT;
-        return dispersion*interElementMultiplier();
-    }    
+
+        [[nodiscard]] __device__ float interElementMultiplier() const
+        {
+            int tests[COUNT] {0, 0, 0, 0};
+            for(int k = 0; k < COUNT; k++)
+            {
+                tests[k] |= (values[0][0][k] > values[4][0][k]) * 1U;
+                tests[k] |= (values[0][0][k] > values[0][4][k]) * 2U;
+
+                tests[k] |= (values[1][0][k] > values[3][0][k]) * 4U;
+                tests[k] |= (values[0][1][k] > values[0][3][k]) * 8U;
+
+                tests[k] |= (values[0][0][k] > values[4][4][k]) * 16U;
+                tests[k] |= (values[4][0][k] > values[0][4][k]) * 32U;
+
+                tests[k] |= (values[1][0][k] > values[3][3][k]) * 64U;
+                tests[k] |= (values[3][0][k] > values[0][3][k]) * 128U;
+
+                tests[k] |= (values[2][0][k] > values[2][4][k]) * 256U;
+                tests[k] |= (values[0][2][k] > values[4][2][k]) * 512U;
+
+                tests[k] |= (values[2][1][k] > values[2][3][k]) * 1024U;
+                tests[k] |= (values[1][2][k] > values[3][2][k]) * 2048U;
+            }
+            constexpr float TEST_COUNT_INV{1.0f / 12};
+            int allTests = ~0U;
+            for(int k = 0; k < COUNT; k++)
+            {
+                allTests &= tests[k];
+            }
+            int count = __popc(allTests);
+            return (1.0f - count * TEST_COUNT_INV);
+        }
+
+        [[nodiscard]] __device__ float dispersion() const
+        {
+            float dispersion{0};
+            dispersion = dispersionOverElements();
+            dispersion += colorDispersion() * COLOR_WEIGHT;
+            return dispersion * interElementMultiplier();
+        }
 };
 
-__device__ int2 focusCoords(int viewID, int2 coords, float focus)
+[[nodiscard]] __device__ int2 focusCoords(int viewID, int2 coords, float focus)
 {
     float2 offset = Inputs::offsets[viewID];
     float2 newCoords{__fmaf_rn(offset.x, focus, coords.x), __fmaf_rn(offset.y, focus, coords.y)};
     return {static_cast<int>(lroundf(newCoords.x)), static_cast<int>(lroundf(newCoords.y))};
 }
 
-__device__ int2 clampCoords(int2 coords)
+[[nodiscard]] __device__ int2 clampCoords(int2 coords)
 {
     int2 result;
     //result.x = min(Inputs::resolution.x-1, max(0, coords.x));
     //result.y = min(Inputs::resolution.y-1, max(0, coords.y));
-    result.x = __vimin_s32_relu(Inputs::resolutionMinusOne.x, coords.x); 
-    result.y = __vimin_s32_relu(Inputs::resolutionMinusOne.y, coords.y); 
+    result.x = __vimin_s32_relu(Inputs::resolutionMinusOne.x, coords.x);
+    result.y = __vimin_s32_relu(Inputs::resolutionMinusOne.y, coords.y);
     return result;
 }
 
-__device__ float optimalFocus(int2 coords)
+[[nodiscard]] __device__ float optimalFocus(int2 coords)
 {
-    float bestFocus{0}; 
-    float bestDispersion{9999999.0f}; 
+    float bestFocus{0};
+    float bestDispersion{9999999.0f};
     float focus = Inputs::focusRange.x;
-    for(int f=0; f<Inputs::FOCUS_STEPS; f++)
+    for(int f = 0; f < Inputs::FOCUS_STEPS; f++)
     {
         BlockDispersion block;
-        for(int i=0; i<INPUT_COUNT; i++)
+        for(int i = 0; i < INPUT_COUNT; i++)
         {
             int2 focusedCoords = focusCoords(i, coords, focus);
             focusedCoords.y -= KERNEL;
             focusedCoords = clampCoords(focusedCoords);
             uchar2 color = loadUV(i, focusedCoords);
             block.addColor(i, color);
-            for(int k=0; k<KERNEL_WIDTH; k++)
-            {   
+            for(int k = 0; k < KERNEL_WIDTH; k++)
+            {
                 focusedCoords.y++;
                 focusedCoords.y = min(Inputs::resolutionMinusOne.y, focusedCoords.y);
                 uint3 sample = loadClosestY(i, focusedCoords);
-                uint8_t *pixels = reinterpret_cast<uint8_t*>(&sample)+sample.z; 
-                for(int p=0; p<KERNEL_WIDTH; p++)
+                uint8_t *pixels = reinterpret_cast<uint8_t *>(&sample) + sample.z;
+                for(int p = 0; p < KERNEL_WIDTH; p++)
                     block.add({k, p, i}, pixels[p]);
             }
         }
@@ -294,26 +293,26 @@ __device__ float optimalFocus(int2 coords)
         {
             bestDispersion = dispersion;
             bestFocus = focus;
-        } 
+        }
         focus += Inputs::focusStep;
     }
     return bestFocus;
 }
 
-__device__ uchar3 focusedColor(int2 coords, float focus)
+[[nodiscard]] __device__ uchar3 focusedColor(int2 coords, float focus)
 {
-    float3 yuv{0,0,0};
-    for(int i=0; i<INPUT_COUNT; i++)
+    float3 yuv{0, 0, 0};
+    for(int i = 0; i < INPUT_COUNT; i++)
     {
         int2 focusedCoords = focusCoords(i, coords, focus);
         focusedCoords = clampCoords(focusedCoords);
-        yuv.x = __fmaf_rn(  loadY(i, focusedCoords),
-                            Inputs::weights[i], yuv.x);
-        uchar2 uv = loadUV(i, focusedCoords); 
-        yuv.y = __fmaf_rn(  uv.x,
-                            Inputs::weights[i], yuv.y);
-        yuv.z = __fmaf_rn(  uv.y,
-                            Inputs::weights[i], yuv.z);
+        yuv.x = __fmaf_rn(loadY(i, focusedCoords),
+                          Inputs::weights[i], yuv.x);
+        uchar2 uv = loadUV(i, focusedCoords);
+        yuv.y = __fmaf_rn(uv.x,
+                          Inputs::weights[i], yuv.y);
+        yuv.z = __fmaf_rn(uv.y,
+                          Inputs::weights[i], yuv.z);
     }
     yuv.x *= Inputs::inverseWeightSum;
     yuv.y *= Inputs::inverseWeightSum;
@@ -325,10 +324,10 @@ __global__ void perPixelKernel(uint8_t *result)
 {
     int2 coords = getImgCoords();
     if(coordsOutside(coords, Inputs::resolution))
-        return; 
+        return;
     float bestFocus = optimalFocus(coords);
     uchar3 color = focusedColor(coords, bestFocus);
-        
+
     //yuv.x=((bestFocus-Inputs::focusRange.x)/(Inputs::focusRange.y-Inputs::focusRange.x))*255;
     //yuv.y = yuv.z = 128;
     store(color, coords);
@@ -340,34 +339,34 @@ void perPixel(std::vector<CUdeviceptr> inFrames, std::vector<float> inWeights, s
     cudaMemcpyToSymbol(Inputs::pitches, inPitches.data(), INPUT_COUNT * sizeof(int));
     cudaMemcpyToSymbol(Inputs::offsets, inOffsets.data(), INPUT_COUNT * sizeof(float2));
     cudaMemcpyToSymbol(Inputs::focusRange, &focusRange, sizeof(int2));
-    float focusStep{(focusRange.y-focusRange.x)/Inputs::FOCUS_STEPS};
+    float focusStep{(focusRange.y - focusRange.x) / Inputs::FOCUS_STEPS};
     cudaMemcpyToSymbol(Inputs::focusStep, &focusStep, sizeof(int));
     cudaMemcpyToSymbol(Inputs::inverseWeightSum, &weightSum, sizeof(float));
     cudaMemcpyToSymbol(Inputs::resolution, &resolution, sizeof(int2));
-    int2 resolutionMinusOne{resolution.x-1, resolution.y-1};
+    int2 resolutionMinusOne{resolution.x - 1, resolution.y - 1};
     cudaMemcpyToSymbol(Inputs::resolutionMinusOne, &resolutionMinusOne, sizeof(int2));
     cudaMemcpyToSymbol(Inputs::pitch, &pitch, sizeof(int));
-    int2 doubleResolution{resolution.x*2, resolution.y*2};
+    int2 doubleResolution{resolution.x * 2, resolution.y * 2};
     cudaMemcpyToSymbol(Inputs::doubleResolution, &doubleResolution, sizeof(int2));
     int pixelCount{pitch * resolution.y};
     cudaMemcpyToSymbol(Inputs::pixelCount, &pixelCount, sizeof(int));
-    std::vector<int> pixelCounts; 
+    std::vector<int> pixelCounts;
     for(auto const &p : inPitches)
         pixelCounts.push_back(p * resolution.y);
     cudaMemcpyToSymbol(Inputs::pixelCounts, pixelCounts.data(), INPUT_COUNT * sizeof(int));
     cudaMemcpyToSymbol(Inputs::framesY, inFrames.data(), INPUT_COUNT * sizeof(CUdeviceptr));
     std::vector<size_t> UVFrames;
-    for(int i=0; i<INPUT_COUNT; i++)
+    for(int i = 0; i < INPUT_COUNT; i++)
     {
-        UVFrames.push_back(inFrames[i]+pixelCounts[i]);
+        UVFrames.push_back(inFrames[i] + pixelCounts[i]);
     }
     cudaMemcpyToSymbol(Inputs::framesUV, inFrames.data(), INPUT_COUNT * sizeof(CUdeviceptr));
-    cudaMemcpyToSymbol(Inputs::resultY, &result, sizeof(uint8_t*));
-    uint8_t* UVResult = result+pixelCount;
-    cudaMemcpyToSymbol(Inputs::resultUV, &UVResult, sizeof(uint8_t*));
+    cudaMemcpyToSymbol(Inputs::resultY, &result, sizeof(uint8_t *));
+    uint8_t *UVResult = result + pixelCount;
+    cudaMemcpyToSymbol(Inputs::resultUV, &UVResult, sizeof(uint8_t *));
     constexpr dim3 WG_SIZE{16, 16, 1};
     dim3 wgCount{1 + resolution.x / WG_SIZE.x, 1 + resolution.y / WG_SIZE.y, 1};
-    perPixelKernel<<<wgCount, WG_SIZE, 0>>>(result);
+    perPixelKernel <<< wgCount, WG_SIZE, 0>>>(result);
 }
 
 }
@@ -390,7 +389,7 @@ class NV12Block
         int U;
         int V;
 
-        __device__ uchar4 RGBToRGBA8(int3 RGB)
+        [[nodiscard]] __device__ uchar4 RGBToRGBA8(int3 RGB) const
         {
             return{ static_cast<unsigned char>(RGB.x),
                     static_cast<unsigned char>(RGB.y),
@@ -418,7 +417,7 @@ class NV12Block
             V = UVplane[linearCoordsUV + 1];
         }
 
-        __device__ int clamp8Bit(float value)
+        [[nodiscard]] __device__ int clamp8Bit(float value) const
         {
             if(value > 255)
                 return 255;
@@ -427,7 +426,7 @@ class NV12Block
             return value;
         }
 
-        __device__ int3 YRuvGuvBuvToRGB(float Y, float Ruv, float Guv, float Buv)
+        [[nodiscard]] __device__ int3 YRuvGuvBuvToRGB(float Y, float Ruv, float Guv, float Buv) const
         {
             int R = clamp8Bit(round(Y + Ruv));
             int G = clamp8Bit(round(Y + Guv));
@@ -435,7 +434,7 @@ class NV12Block
             return {R, G, B};
         }
 
-        __device__ int3 YRuvGuvBuvToRGB(int Y, int Ruv, int Guv, int Buv)
+        [[nodiscard]] __device__ int3 YRuvGuvBuvToRGB(int Y, int Ruv, int Guv, int Buv) const
         {
             int R = clamp8Bit((Y + Ruv + 128) >> 8);
             int G = clamp8Bit((Y + Guv + 128) >> 8);
@@ -444,7 +443,7 @@ class NV12Block
         }
 
         template <typename T>
-        __device__ void storeRGBA(cudaSurfaceObject_t RGBA, int2 blockCoords)
+        __device__ void storeRGBA(cudaSurfaceObject_t RGBA, int2 blockCoords) const
         {
             int UN = U - 128;
             int VN = V - 128;
@@ -494,8 +493,6 @@ void NV12ToRGBA(uint8_t *NV12, cudaSurfaceObject_t RGBA, int2 resolution, int pi
     int2 halfResolution{resolution.x >> 1, resolution.y >> 1};
     constexpr dim3 WG_SIZE{16, 16, 1};
     dim3 wgCount{1 + halfResolution.x / WG_SIZE.x, 1 + halfResolution.y / WG_SIZE.y, 1};
-    NV12ToRGBAKernel<<<wgCount, WG_SIZE, 0>>>(NV12, RGBA, resolution, halfResolution, pitch * resolution.y, pitch);
+    NV12ToRGBAKernel <<< wgCount, WG_SIZE, 0>>>(NV12, RGBA, resolution, halfResolution, pitch * resolution.y, pitch);
 }
 }
-
-
