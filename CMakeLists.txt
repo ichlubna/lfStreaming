@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(lfStreamer LANGUAGES CXX CUDA)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CUDA_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1 ) 
 set(CMAKE_CXX_STANDARD_REQUIRED on)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -pedantic -fmodules-ts")

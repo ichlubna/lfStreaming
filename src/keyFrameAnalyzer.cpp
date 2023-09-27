@@ -142,6 +142,7 @@ std::filesystem::path KeyFrameAnalyzer::getBestKeyFrame()
     {
         Frame candidateFrame(candidateFile.path());
         std::cerr << candidateFile << std::endl;
+        bestMetrics.newCandidate(candidateFile.path());
         for(const auto &testedFile : std::filesystem::directory_iterator{directory})
         {
             Frame testedFrame(testedFile.path());
@@ -153,7 +154,8 @@ std::filesystem::path KeyFrameAnalyzer::getBestKeyFrame()
             float psnr = getMetric("lavfi.psnr.psnr_avg", bufferSinkPsnrCtx);
             float ssim = getMetric("lavfi.ssim.All", bufferSinkSsimCtx);
             //float vmaf = getMetric("lavfi.vmaf.score", bufferSinkVmafCtx);
-            std::cerr << psnr << " " << ssim << " " << std::endl;
+            bestMetrics.add(psnr, ssim, 0);
         }
     }
+    return bestMetrics.result();
 }

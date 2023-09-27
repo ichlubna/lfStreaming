@@ -80,6 +80,7 @@ void Encoder::encodeTimeFrame(std::string inputDir, float quality, std::string f
     {
         KeyFrameAnalyzer keyFrameAnalyzer(inputDir);
         keyFrameAnalyzer.getBestKeyFrame();
+        
         size_t referenceIndex = referenceCoords.y * colsRows.x + referenceCoords.x;
         std::set<std::filesystem::path>::iterator it = files.begin();
         std::advance(it, referenceIndex);
