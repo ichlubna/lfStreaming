@@ -61,26 +61,30 @@ void Encoder::encode(std::string inputDir, std::string outputFile, float quality
 
 void Encoder::encodeTimeFrame(std::string inputDir, float quality, std::string format, float aspect, glm::vec2 focusRange, glm::ivec2 keyCoords, int keyInterval)
 {
+    std::cout << "Starting encoding in format " << format << " with GoP size of " << keyInterval << " frames (grids)" << std::endl;
     checkDir(inputDir);
     auto files = Muxing::listPath(inputDir);
     auto lastFileCoords = Muxing::parseFilename(*files.rbegin()) + glm::uvec2(1);
     auto colsRows = lastFileCoords;
-    auto referenceCoords = keyCoords;
-    if(keyCoords == glm::ivec2(-1, -1))
-        referenceCoords = lastFileCoords / glm::uvec2(2);
     auto videoFormat = stringToFormat(format);
     size_t crf = calculateCrf(videoFormat, quality);
 
     std::cout << "Time frame " << currentFrame + 1 << " of " << timeFrameCount << std::endl;
     std::cout << "Encoding..." << std::endl;
-    LoadingBar bar(files.size() + 1, true);
 
     std::filesystem::path path{inputDir};
     if((currentFrame % keyInterval) == 0)
     {
-        KeyFrameAnalyzer keyFrameAnalyzer(inputDir);
-        keyFrameAnalyzer.getBestKeyFrame();
-        
+        auto referenceCoords = keyCoords;
+        if(keyCoords == glm::ivec2(-1, -1))
+        {
+            std::cout << "Running automatic keyframe detection" << std::endl;
+            KeyFrameAnalyzer keyFrameAnalyzer(inputDir);
+            auto fileName = keyFrameAnalyzer.getBestKeyFrame();
+            referenceCoords = Muxing::parseFilename(fileName);
+        }
+       
+        std::cout << "Selected frame at grid position " << referenceCoords.x << "_" << referenceCoords.y << " as key frame" << std::endl;
         size_t referenceIndex = referenceCoords.y * colsRows.x + referenceCoords.x;
         std::set<std::filesystem::path>::iterator it = files.begin();
         std::advance(it, referenceIndex);
@@ -95,6 +99,7 @@ void Encoder::encodeTimeFrame(std::string inputDir, float quality, std::string f
     if(!muxer->isInitialized())
         muxer->init(resolution, colsRows, videoFormat, timeFrameCount, aspect, focusRange);
 
+    LoadingBar bar(files.size() + 1, true);
     for(auto const &file : files)
         if(lastReferenceFrame.fileName == path / file)
         {
@@ -224,3 +229,4 @@ void Encoder::PairEncoder::encode()
         buffer = &framePacket;
     }
 }
+

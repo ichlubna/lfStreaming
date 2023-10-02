@@ -1,13 +1,13 @@
-#include "keyFrameAnalyzer.h"
 #include <stdexcept>
+#include <filesystem>
 extern "C" {
 #include <libavutil/opt.h>
 #include <libavfilter/buffersink.h>
 #include <libavfilter/buffersrc.h>
 }
-#include <filesystem>
+#include "keyFrameAnalyzer.h"
+#include "loadingBar/loadingbar.hpp"
 
-#include <iostream>
 KeyFrameAnalyzer::KeyFrameAnalyzer(std::filesystem::path inDirectory) : directory {inDirectory}
 {
     const AVFilter *bufferRef  = avfilter_get_by_name("buffer");
@@ -16,25 +16,25 @@ KeyFrameAnalyzer::KeyFrameAnalyzer(std::filesystem::path inDirectory) : director
     const AVFilter *bufferSinkSsim = avfilter_get_by_name("buffersink");
     const AVFilter *bufferSinkVmaf = avfilter_get_by_name("buffersink");
     const AVFilter *psnrFilter  = avfilter_get_by_name("psnr");
-    const AVFilter *ssimFilter  = avfilter_get_by_name("ssim");
-    const AVFilter *vmafFilter  = avfilter_get_by_name("libvmaf");
-    const AVFilter *splitFilterRef  = avfilter_get_by_name("split");
-    const AVFilter *splitFilterTest  = avfilter_get_by_name("split");
-
     if(psnrFilter == nullptr)
         throw std::runtime_error("Cannot find psnr filter.");
-    AVFilterContext *psnrFilterCtx;
+    const AVFilter *ssimFilter  = avfilter_get_by_name("ssim");
     if(ssimFilter == nullptr)
         throw std::runtime_error("Cannot find ssim filter.");
-    AVFilterContext *ssimFilterCtx;
+    const AVFilter *vmafFilter  = avfilter_get_by_name("libvmaf");
     if(vmafFilter == nullptr)
         throw std::runtime_error("Cannot find vmaf filter.");
-    AVFilterContext *vmafFilterCtx;
+    const AVFilter *splitFilterRef  = avfilter_get_by_name("split");
     if(splitFilterRef == nullptr)
         throw std::runtime_error("Cannot find split filter.");
-    AVFilterContext *splitFilterRefCtx;
+    const AVFilter *splitFilterTest  = avfilter_get_by_name("split");
     if(splitFilterTest == nullptr)
         throw std::runtime_error("Cannot find split filter.");
+
+    AVFilterContext *psnrFilterCtx;
+    AVFilterContext *ssimFilterCtx;
+    AVFilterContext *vmafFilterCtx;
+    AVFilterContext *splitFilterRefCtx;
     AVFilterContext *splitFilterTestCtx;
     enum AVPixelFormat pix_fmts[] = { AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE };
 
@@ -115,7 +115,6 @@ void KeyFrameAnalyzer::printMetadata(AVDictionary *metadata) const
 
 float KeyFrameAnalyzer::getMetric(std::string dataName, AVFilterContext *filterContext)
 {
-    av_log_set_level(AV_LOG_INFO);
     float metricValue = 0;
     bool waitForFrame{true};
     while(waitForFrame)
@@ -125,9 +124,20 @@ float KeyFrameAnalyzer::getMetric(std::string dataName, AVFilterContext *filterC
             break;
         if(r < 0)
             throw std::runtime_error("Cannot recieve frame from the graph.");
-        //printMetadata(resultFrame->metadata);
-        auto metricData = av_dict_get(resultFrame->metadata, dataName.c_str(), nullptr, 0)->value;
-        metricValue = std::stof(metricData);
+        if(dataName == "vmaf")
+        {
+            //WORKAROUND BUT NOT WORKING WELL
+            //av_log_set_level(AV_LOG_INFO);
+            //vmafFilter->uninit(vmafFilterCtx);
+            //vmafFilter->init(vmafFilterCtx);
+            metricValue = 0;
+        }
+        else
+        {
+            //printMetadata(resultFrame->metadata);
+            auto metricData = av_dict_get(resultFrame->metadata, dataName.c_str(), nullptr, 0)->value;
+            metricValue = std::stof(metricData);
+        }
         av_frame_unref(resultFrame);
         waitForFrame = false;
     }
@@ -135,26 +145,26 @@ float KeyFrameAnalyzer::getMetric(std::string dataName, AVFilterContext *filterC
 }
 
 std::filesystem::path KeyFrameAnalyzer::getBestKeyFrame()
-{
+{ 
+    size_t count = std::distance(std::filesystem::directory_iterator(directory), std::filesystem::directory_iterator{});
+    LoadingBar bar(count*count, true);
     BestMetrics bestMetrics;
-
     for(const auto &candidateFile : std::filesystem::directory_iterator{directory})
     {
         Frame candidateFrame(candidateFile.path());
-        std::cerr << candidateFile << std::endl;
         bestMetrics.newCandidate(candidateFile.path());
         for(const auto &testedFile : std::filesystem::directory_iterator{directory})
         {
             Frame testedFrame(testedFile.path());
-
             if(av_buffersrc_add_frame_flags(bufferRefCtx, candidateFrame.getFrame(), AV_BUFFERSRC_FLAG_KEEP_REF) < 0)
                 throw std::runtime_error("Cannot add reference frame to the graph.");
             if(av_buffersrc_add_frame(bufferTestCtx, testedFrame.getFrame()) < 0)
                 throw std::runtime_error("Cannot add tested frame to the graph.");
             float psnr = getMetric("lavfi.psnr.psnr_avg", bufferSinkPsnrCtx);
             float ssim = getMetric("lavfi.ssim.All", bufferSinkSsimCtx);
-            //float vmaf = getMetric("lavfi.vmaf.score", bufferSinkVmafCtx);
+            float vmaf = getMetric("vmaf", bufferSinkVmafCtx);
             bestMetrics.add(psnr, ssim, 0);
+            bar.add();
         }
     }
     return bestMetrics.result();
