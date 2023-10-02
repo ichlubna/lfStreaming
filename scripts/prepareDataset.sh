@@ -4,11 +4,13 @@ RENAMESCRIPT=./renameLFImages.py
 WORKPATH=./workdir
 mkdir $WORKPATH
 
-wget https://merlin.fit.vutbr.cz/LightField/datasets/lfDataset/data/animBonfire.7z -O $WORKPATH/
+NAME=animBonfire
+
+wget https://merlin.fit.vutbr.cz/LightField/datasets/lfDataset/data/$NAME.7z -P $WORKPATH/
 EXTRACTED=$WORKPATH/extracted
 mkdir $EXTRACTED
-7za x -y animBonfire.7z -o$EXTRACTED/
-INPATH=$EXTRACTED/animfire
+7z x -y $WORKPATH/$NAME.7z -o$EXTRACTED/
+INPATH=$EXTRACTED/$NAME
 
 OUTPATH=$WORKPATH/decoded
 mkdir $OUTPATH

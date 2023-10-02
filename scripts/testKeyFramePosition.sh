@@ -19,7 +19,7 @@ SCALE=5
 echo -n "" > $RESULTLOG
 echo -n "" > $RESULTLOGVERBOSE
 
-for q in 0.5 # 0.0 0.25 0.5 0.75 1.0
+for q in 0.0 0.25 0.5 0.75 1.0
 do 
     echo "Quality: $q" >> $RESULTLOG
     echo "Quality: $q" >> $RESULTLOGVERBOSE
