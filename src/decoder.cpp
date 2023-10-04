@@ -99,10 +99,12 @@ std::vector<glm::vec2> Decoder::parseTrajectory(std::string textTrajectory) cons
         std::istringstream pairStream(pair);
         while(std::getline(pairStream, value, valueDelimiter))
         {
+            if(i<0)
+                throw std::runtime_error("Trajectory must contain only 2D coordinate pairs!");
             position[i] = std::stof(value);
             if(position[i] < 0 || position[i] > 1)
                 throw std::runtime_error("Trajectory values are not normalized!");
-            i++;
+            i--;
         }
         trajectory.push_back(position);
     }
@@ -280,9 +282,9 @@ void Decoder::decodeAndStore(std::string trajectory, std::string outputPath)
     for(auto const &position : positions)
     {
         std::cout << "____________________________" << std::endl;
-        std::cout << "Processing view " << position.x << "_" << position.y << std::endl;
+        std::cout << "Processing view " << position.y << "_" << position.x << std::endl;
         auto result = decodeAndInterpolate<true>(position);
-        std::string fileName{std::filesystem::path(outputPath) / (std::to_string(position.x) + "_" + std::to_string(position.y) + ".ppm")};
+        std::string fileName{std::filesystem::path(outputPath) / (std::to_string(position.y) + "_" + std::to_string(position.x) + ".ppm")};
         std::cout << "Storing result to " + fileName << std::endl;
         exporter.exportImage(result.frame, result.pitch, videoDecoder->getResolution(), fileName);
     }
