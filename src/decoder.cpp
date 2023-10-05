@@ -95,7 +95,7 @@ std::vector<glm::vec2> Decoder::parseTrajectory(std::string textTrajectory) cons
     while(std::getline(stream, pair, pairDelimiter))
     {
         glm::vec2 position;
-        int i{0};
+        int i{1};
         std::istringstream pairStream(pair);
         while(std::getline(pairStream, value, valueDelimiter))
         {
@@ -181,7 +181,6 @@ Decoder::InterpolationResult Decoder::decodeAndInterpolate(glm::vec2 position)
         std::cout << "Decoding the frames..." << std::endl;
         timer.start();
     }
-
     videoDecoder->clearBuffer();
     framePicker.compute(videoDecoder->getColsRows(), position);
     auto guide = framePicker.guide(interpolationOrder);

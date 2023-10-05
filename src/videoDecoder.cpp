@@ -13,8 +13,8 @@ VideoDecoder::VideoDecoder(std::string file) : demuxer{std::make_unique<Muxing::
 cudaVideoCodec VideoDecoder::getCodec()
 {
     cudaVideoCodec codec = cudaVideoCodec_HEVC;
-    //if(demuxer->data.format() == Muxing::EncodedData::Format::AV1)
-    //    codec = cudaVideoCodec_AV1;
+    if(demuxer->data.format() == Muxing::EncodedData::Format::AV1)
+        codec = cudaVideoCodec_AV1;
     return codec;
 }
 

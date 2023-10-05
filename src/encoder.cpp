@@ -128,7 +128,7 @@ void Encoder::FFEncoder::initAV1()
 {
     codecName = "libaom-av1";
     codecParamsName = "aom-params";
-    codecParams = "keyint_min=" + std::to_string(NO_KEYINT) + ":crf=" + std::to_string(crf);
+    codecParams = "cpu-used=8:cq-level=" + std::to_string(crf);
 }
 
 Encoder::FFEncoder::FFEncoder(glm::uvec2 inResolution, AVPixelFormat inPixFmt, size_t inCrf, Encoder::StreamFormat format) : resolution{inResolution}, pixFmt{inPixFmt}, crf{inCrf}
@@ -151,6 +151,8 @@ void Encoder::FFEncoder::initEncoder()
     codecContext->pix_fmt = pixFmt;
     codecContext->time_base = {1, 60};
     av_opt_set(codecContext->priv_data, codecParamsName.c_str(), codecParams.c_str(), 0);
+    av_opt_set_int(codecContext->priv_data, "crf", crf, 0);
+    av_opt_set_int(codecContext->priv_data, "keyint", NO_KEYINT, 0);
     if(avcodec_open2(codecContext, codec, nullptr) < 0)
         throw std::runtime_error("Cannot open output codec!");
     packet = av_packet_alloc();
