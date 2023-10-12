@@ -49,6 +49,7 @@ void Encoder::checkDir(std::string path) const
 
 void Encoder::encode(std::string inputDir, std::string outputFile, float quality, std::string format, glm::ivec2 keyCoords, int keyInterval, float aspect, glm::vec2 focusRange)
 {
+    //av_log_set_level(AV_LOG_ERROR);
     if(keyInterval < 1)
         throw std::runtime_error("The GoP interval can't be lower than 1!");
     checkDir(inputDir);

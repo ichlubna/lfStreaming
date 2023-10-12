@@ -124,20 +124,9 @@ float KeyFrameAnalyzer::getMetric(std::string dataName, AVFilterContext *filterC
             break;
         if(r < 0)
             throw std::runtime_error("Cannot recieve frame from the graph.");
-        if(dataName == "vmaf")
-        {
-            //WORKAROUND BUT NOT WORKING WELL
-            //av_log_set_level(AV_LOG_INFO);
-            //vmafFilter->uninit(vmafFilterCtx);
-            //vmafFilter->init(vmafFilterCtx);
-            metricValue = 0;
-        }
-        else
-        {
             //printMetadata(resultFrame->metadata);
-            auto metricData = av_dict_get(resultFrame->metadata, dataName.c_str(), nullptr, 0)->value;
-            metricValue = std::stof(metricData);
-        }
+        auto metricData = av_dict_get(resultFrame->metadata, dataName.c_str(), nullptr, 0)->value;
+        metricValue = std::stof(metricData);
         av_frame_unref(resultFrame);
         waitForFrame = false;
     }
@@ -162,8 +151,8 @@ std::filesystem::path KeyFrameAnalyzer::getBestKeyFrame()
                 throw std::runtime_error("Cannot add tested frame to the graph.");
             float psnr = getMetric("lavfi.psnr.psnr_avg", bufferSinkPsnrCtx);
             float ssim = getMetric("lavfi.ssim.All", bufferSinkSsimCtx);
-            float vmaf = getMetric("vmaf", bufferSinkVmafCtx);
-            bestMetrics.add(psnr, ssim, 0);
+            float vmaf = getMetric("lavfi.vmaf", bufferSinkVmafCtx);
+            bestMetrics.add(psnr, ssim, vmaf);
             bar.add();
         }
     }

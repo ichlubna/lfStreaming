@@ -210,23 +210,33 @@ class BlockDispersion
             {
                 tests[k] |= (values[0][0][k] > values[4][0][k]) * 1U;
                 tests[k] |= (values[0][0][k] > values[0][4][k]) * 2U;
-
-                tests[k] |= (values[1][0][k] > values[3][0][k]) * 4U;
-                tests[k] |= (values[0][1][k] > values[0][3][k]) * 8U;
+                tests[k] |= (values[4][0][k] > values[4][4][k]) * 4U;
+                tests[k] |= (values[0][4][k] > values[4][4][k]) * 8U;
 
                 tests[k] |= (values[0][0][k] > values[4][4][k]) * 16U;
                 tests[k] |= (values[4][0][k] > values[0][4][k]) * 32U;
 
-                tests[k] |= (values[1][0][k] > values[3][3][k]) * 64U;
-                tests[k] |= (values[3][0][k] > values[0][3][k]) * 128U;
+                tests[k] |= (values[2][1][k] > values[2][3][k]) * 64U;
+                tests[k] |= (values[1][2][k] > values[3][2][k]) * 128U;
 
-                tests[k] |= (values[2][0][k] > values[2][4][k]) * 256U;
-                tests[k] |= (values[0][2][k] > values[4][2][k]) * 512U;
+                tests[k] |= (values[0][1][k] > values[4][3][k]) * 256U;
+                tests[k] |= (values[0][3][k] > values[4][1][k]) * 512U;
+                tests[k] |= (values[1][0][k] > values[3][4][k]) * 1024U;
+                tests[k] |= (values[3][0][k] > values[1][4][k]) * 2048U;
+                
+                tests[k] |= (values[0][2][k] > values[4][2][k]) * 4096U;
+                tests[k] |= (values[2][0][k] > values[2][4][k]) * 8192U;
+                
+                tests[k] |= (values[1][1][k] > values[1][3][k]) * 16384U;
+                tests[k] |= (values[1][3][k] > values[3][3][k]) * 32768U;
+                tests[k] |= (values[3][3][k] > values[3][1][k]) * 65536U;
+                tests[k] |= (values[3][1][k] > values[1][1][k]) * 131072U;
+                
+                tests[k] |= (values[1][1][k] > values[3][3][k]) * 262144U;
+                tests[k] |= (values[3][1][k] > values[1][3][k]) * 524288U;
 
-                tests[k] |= (values[2][1][k] > values[2][3][k]) * 1024U;
-                tests[k] |= (values[1][2][k] > values[3][2][k]) * 2048U;
             }
-            constexpr float TEST_COUNT_INV{1.0f / 12};
+            constexpr float TEST_COUNT_INV{1.0f / 20};
             int allTests = ~0U;
             for(int k = 0; k < COUNT; k++)
             {
