@@ -208,41 +208,42 @@ class BlockDispersion
             int tests[COUNT] {0, 0, 0, 0};
             for(int k = 0; k < COUNT; k++)
             {
-                tests[k] |= (values[0][0][k] > values[4][0][k]) * 1U;
-                tests[k] |= (values[0][0][k] > values[0][4][k]) * 2U;
-                tests[k] |= (values[4][0][k] > values[4][4][k]) * 4U;
-                tests[k] |= (values[0][4][k] > values[4][4][k]) * 8U;
-
-                tests[k] |= (values[0][0][k] > values[4][4][k]) * 16U;
-                tests[k] |= (values[4][0][k] > values[0][4][k]) * 32U;
-
-                tests[k] |= (values[2][1][k] > values[2][3][k]) * 64U;
-                tests[k] |= (values[1][2][k] > values[3][2][k]) * 128U;
-
-                tests[k] |= (values[0][1][k] > values[4][3][k]) * 256U;
-                tests[k] |= (values[0][3][k] > values[4][1][k]) * 512U;
-                tests[k] |= (values[1][0][k] > values[3][4][k]) * 1024U;
-                tests[k] |= (values[3][0][k] > values[1][4][k]) * 2048U;
-                
-                tests[k] |= (values[0][2][k] > values[4][2][k]) * 4096U;
-                tests[k] |= (values[2][0][k] > values[2][4][k]) * 8192U;
-                
-                tests[k] |= (values[1][1][k] > values[1][3][k]) * 16384U;
-                tests[k] |= (values[1][3][k] > values[3][3][k]) * 32768U;
-                tests[k] |= (values[3][3][k] > values[3][1][k]) * 65536U;
-                tests[k] |= (values[3][1][k] > values[1][1][k]) * 131072U;
-                
-                tests[k] |= (values[1][1][k] > values[3][3][k]) * 262144U;
-                tests[k] |= (values[3][1][k] > values[1][3][k]) * 524288U;
+                tests[k] |= (uint32_t)(values[0][0][k] >= values[4][0][k])<<0u;
+                tests[k] |= (uint32_t)(values[0][0][k] >= values[0][4][k])<<1u;
+                tests[k] |= (uint32_t)(values[4][0][k] >= values[4][4][k])<<2u;
+                tests[k] |= (uint32_t)(values[0][4][k] >= values[4][4][k])<<3u;
+                                                                         
+                tests[k] |= (uint32_t)(values[0][0][k] >= values[4][4][k])<<4u;
+                tests[k] |= (uint32_t)(values[4][0][k] >= values[0][4][k])<<5u;
+                                                                         
+                tests[k] |= (uint32_t)(values[2][1][k] >= values[2][3][k])<<6u;
+                tests[k] |= (uint32_t)(values[1][2][k] >= values[3][2][k])<<7u;
+                                                                         
+                tests[k] |= (uint32_t)(values[0][1][k] >= values[4][3][k])<<8u;
+                tests[k] |= (uint32_t)(values[0][3][k] >= values[4][1][k])<<9u;
+                tests[k] |= (uint32_t)(values[1][0][k] >= values[3][4][k])<<10u;
+                tests[k] |= (uint32_t)(values[3][0][k] >= values[1][4][k])<<11u;
+                                                                         
+                tests[k] |= (uint32_t)(values[0][2][k] >= values[4][2][k])<<12u;
+                tests[k] |= (uint32_t)(values[2][0][k] >= values[2][4][k])<<13u;
+                                                                         
+                tests[k] |= (uint32_t)(values[1][1][k] >= values[1][3][k])<<14u;
+                tests[k] |= (uint32_t)(values[1][3][k] >= values[3][3][k])<<15u;
+                tests[k] |= (uint32_t)(values[3][3][k] >= values[3][1][k])<<16u;
+                tests[k] |= (uint32_t)(values[3][1][k] >= values[1][1][k])<<17u;
+                                                                         
+                tests[k] |= (uint32_t)(values[1][1][k] >= values[3][3][k])<<18u;
+                tests[k] |= (uint32_t)(values[3][1][k] >= values[1][3][k])<<19u;
 
             }
             constexpr float TEST_COUNT_INV{1.0f / 20};
-            int allTests = ~0U;
+            unsigned int allTests[2] = {~0U, ~0U};
             for(int k = 0; k < COUNT; k++)
             {
-                allTests &= tests[k];
+                allTests[0] &= tests[k];
+                allTests[1] &= ~tests[k];
             }
-            int count = __popc(allTests);
+            int count = __popc((allTests[0] | allTests[1]) & 0x000fffffu);
             return (1.0f - count * TEST_COUNT_INV);
         }
 
