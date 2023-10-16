@@ -1,3 +1,4 @@
+#include <iterator>
 extern "C" {
 #include <libavutil/opt.h>
 #include <libavutil/imgutils.h>
@@ -47,61 +48,95 @@ void Encoder::checkDir(std::string path) const
         throw std::runtime_error("The directory " + path + " is empty!");
 }
 
+std::vector<std::filesystem::path> Encoder::sampleDirectory(Encoder::DirInfo dirInfo)
+{
+    std::vector<std::filesystem::path> files;
+    auto begin = dirInfo.files.begin();
+    files.push_back(*begin);
+    files.push_back(*std::next(begin, dirInfo.colsRows.x-1));
+    files.push_back(*std::next(begin, dirInfo.colsRows.x*(dirInfo.colsRows.y-1)));
+    files.push_back(*std::next(begin, dirInfo.colsRows.x*dirInfo.colsRows.y-1));
+    files.push_back(*std::next(begin, dirInfo.colsRows.x*(dirInfo.colsRows.y/2)+dirInfo.colsRows.x/2));
+    for(auto i : files)
+    std::cerr << i << " " ;
+    return files;
+}
+
+bool Encoder::isCurrentKeyFrame(int keyInterval, std::filesystem::path inputDir, std::set<std::filesystem::path>::iterator dirIterator)
+{
+    DirInfo currentDir(inputDir / *dirIterator);
+    DirInfo previousDir(inputDir / *std::prev(dirIterator, 1));
+    auto currentSamples = sampleDirectory(currentDir);
+    auto previousSamples = sampleDirectory(previousDir);
+    if(keyInterval > 0)
+        return (currentFrame % keyInterval) == 0;
+    return false;
+}
+
 void Encoder::encode(std::string inputDir, std::string outputFile, float quality, std::string format, glm::ivec2 keyCoords, int keyInterval, float aspect, glm::vec2 focusRange)
 {
-    //av_log_set_level(AV_LOG_ERROR);
-    if(keyInterval < 1)
-        throw std::runtime_error("The GoP interval can't be lower than 1!");
+    av_log_set_level(AV_LOG_ERROR);
     checkDir(inputDir);
     auto timeFrameDirs = Muxing::listPath(inputDir);
     timeFrameCount = timeFrameDirs.size();
-    for(auto const &dir : timeFrameDirs)
-        encodeTimeFrame(inputDir / dir, quality, format, aspect, focusRange, keyCoords, keyInterval);
+    auto dirIterator = timeFrameDirs.begin();
+    for(size_t i=0; i<timeFrameDirs.size(); i++)
+    {
+        bool isKeyFrame = true;
+        if(i>0)
+            isKeyFrame = isCurrentKeyFrame(keyInterval, inputDir, dirIterator);
+
+        encodeTimeFrame(inputDir / *dirIterator, quality, format, aspect, focusRange, keyCoords, isKeyFrame);
+        dirIterator++;
+    }
     muxer->save(outputFile);
 }
 
-void Encoder::encodeTimeFrame(std::string inputDir, float quality, std::string format, float aspect, glm::vec2 focusRange, glm::ivec2 keyCoords, int keyInterval)
+void Encoder::determineReferenceFrame(glm::ivec2 inputKeyCoords, std::string inputDir, glm::ivec2 colsRows, std::set<std::filesystem::path> files)
 {
-    std::cout << "Starting encoding in format " << format << " with GoP size of " << keyInterval << " frames (grids)" << std::endl;
+    auto referenceCoords = inputKeyCoords;
+    if(inputKeyCoords == glm::ivec2(-1, -1))
+    {
+        std::cout << "Running automatic keyframe detection" << std::endl;
+        KeyFrameAnalyzer keyFrameAnalyzer(inputDir);
+        auto fileName = keyFrameAnalyzer.getBestKeyFrame();
+        referenceCoords = Muxing::parseFilename(fileName);
+    }
+   
+    std::cout << "Selected frame at grid position " << referenceCoords.x << "_" << referenceCoords.y << " as key frame" << std::endl;
+    size_t referenceIndex = referenceCoords.y * colsRows.x + referenceCoords.x;
+    std::set<std::filesystem::path>::iterator it = files.begin();
+    std::advance(it, referenceIndex);
+    std::string referenceFrame = *it;
+    std::filesystem::path path{inputDir};
+    lastReferenceFrame.fileName = path / referenceFrame;
+    lastReferenceFrame.timeFrame = currentFrame;
+    lastReferenceFrame.coords = referenceCoords;
+}
+
+void Encoder::encodeTimeFrame(std::string inputDir, float quality, std::string format, float aspect, glm::vec2 focusRange, glm::ivec2 keyCoords, bool isKeyFrame)
+{
+    std::cout << "Starting encoding in format " << format << std::endl; 
     checkDir(inputDir);
-    auto files = Muxing::listPath(inputDir);
-    auto lastFileCoords = Muxing::parseFilename(*files.rbegin()) + glm::uvec2(1);
-    auto colsRows = lastFileCoords;
+    DirInfo dirInfo(inputDir);
     auto videoFormat = stringToFormat(format);
     size_t crf = calculateCrf(videoFormat, quality);
 
     std::cout << "Time frame " << currentFrame + 1 << " of " << timeFrameCount << std::endl;
     std::cout << "Encoding..." << std::endl;
 
-    std::filesystem::path path{inputDir};
-    if((currentFrame % keyInterval) == 0)
-    {
-        auto referenceCoords = keyCoords;
-        if(keyCoords == glm::ivec2(-1, -1))
-        {
-            std::cout << "Running automatic keyframe detection" << std::endl;
-            KeyFrameAnalyzer keyFrameAnalyzer(inputDir);
-            auto fileName = keyFrameAnalyzer.getBestKeyFrame();
-            referenceCoords = Muxing::parseFilename(fileName);
-        }
-       
-        std::cout << "Selected frame at grid position " << referenceCoords.x << "_" << referenceCoords.y << " as key frame" << std::endl;
-        size_t referenceIndex = referenceCoords.y * colsRows.x + referenceCoords.x;
-        std::set<std::filesystem::path>::iterator it = files.begin();
-        std::advance(it, referenceIndex);
-        std::string referenceFrame = *it;
-        lastReferenceFrame.fileName = path / referenceFrame;
-        lastReferenceFrame.timeFrame = currentFrame;
-        lastReferenceFrame.coords = referenceCoords;
-    }
+    if(isKeyFrame)
+        determineReferenceFrame(keyCoords, inputDir, dirInfo.colsRows, dirInfo.files);
+
     PairEncoder refFrame(lastReferenceFrame.fileName, lastReferenceFrame.fileName, crf, videoFormat);
     auto resolution = refFrame.getResolution();
 
     if(!muxer->isInitialized())
-        muxer->init(resolution, colsRows, videoFormat, timeFrameCount, aspect, focusRange);
+        muxer->init(resolution, dirInfo.colsRows, videoFormat, timeFrameCount, aspect, focusRange);
 
-    LoadingBar bar(files.size() + 1, true);
-    for(auto const &file : files)
+    LoadingBar bar(dirInfo.files.size() + 1, true);
+    std::filesystem::path path{inputDir};
+    for(auto const &file : dirInfo.files)
         if(lastReferenceFrame.fileName == path / file)
         {
             *muxer << refFrame.getReferencePacket();
@@ -129,7 +164,7 @@ void Encoder::FFEncoder::initAV1()
 {
     codecName = "libaom-av1";
     codecParamsName = "aom-params";
-    codecParams = "cpu-used=8:cq-level=" + std::to_string(crf);
+    codecParams = "row-mt=1:tile-columns=2:tile-rows=2:cpu-used=8:cq-level=" + std::to_string(crf);
 }
 
 Encoder::FFEncoder::FFEncoder(glm::uvec2 inResolution, AVPixelFormat inPixFmt, size_t inCrf, Encoder::StreamFormat format) : resolution{inResolution}, pixFmt{inPixFmt}, crf{inCrf}

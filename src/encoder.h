@@ -17,6 +17,18 @@ class Encoder
         enum StreamFormat { H265 = 0, AV1 = 1 };
 
     private:
+        class DirInfo
+        {
+            public:
+            std::set<std::filesystem::path> files;
+            glm::ivec2 colsRows;
+            DirInfo(std::filesystem::path path)
+            {
+                files = Muxing::listPath(path);
+                colsRows = Muxing::parseFilename(*files.rbegin()) + glm::uvec2(1);
+            }
+        };
+
         class FFEncoder
         {
             public:
@@ -96,10 +108,13 @@ class Encoder
         } lastReferenceFrame;
 
         size_t calculateCrf(StreamFormat format, float quality) const;
+        void determineReferenceFrame(glm::ivec2 inputKeyCoords, std::string inputDir, glm::ivec2 colsRows, std::set<std::filesystem::path> files);
+        [[nodiscard]] bool isCurrentKeyFrame(int keyInterval, std::filesystem::path inputDir, std::set<std::filesystem::path>::iterator dirIterator);
         size_t timeFrameCount{0};
         StreamFormat stringToFormat(std::string) const;
-        void encodeTimeFrame(std::string inputDir, float quality, std::string format, float aspect, glm::vec2 focusRange, glm::ivec2 keyCoords, int keyInterval);
+        void encodeTimeFrame(std::string inputDir, float quality, std::string format, float aspect, glm::vec2 focusRange, glm::ivec2 keyCoords, bool isKeyFrame);
         void checkDir(std::string path) const;
+        [[nodiscard]] std::vector<std::filesystem::path> sampleDirectory(DirInfo dirInfo);
         std::unique_ptr<Muxing::Muxer> muxer;
         size_t currentFrame{0};
 };

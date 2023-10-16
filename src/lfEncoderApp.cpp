@@ -14,7 +14,7 @@ int main(int argc, char **argv)
 
     glm::ivec2 keyCoords{-1, -1};
     glm::vec2 focusRange{0, 0.5};
-    int keyInterval{1};
+    int keyInterval{-1};
     float aspect{1};
 
     std::string helpText{ "Usage:\n"
