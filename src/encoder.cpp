@@ -64,13 +64,15 @@ std::vector<std::filesystem::path> Encoder::sampleDirectory(Encoder::DirInfo dir
 
 bool Encoder::isCurrentKeyFrame(int keyInterval, std::filesystem::path inputDir, std::set<std::filesystem::path>::iterator dirIterator)
 {
+    if(keyInterval > 0)
+        return (currentFrame % keyInterval) == 0;
+
     DirInfo currentDir(inputDir / *dirIterator);
     DirInfo previousDir(inputDir / *std::prev(dirIterator, 1));
     auto currentSamples = sampleDirectory(currentDir);
     auto previousSamples = sampleDirectory(previousDir);
-    if(keyInterval > 0)
-        return (currentFrame % keyInterval) == 0;
-    return false;
+    KeyFrameAnalyzer analyzer;
+    return analyzer.isSignificantlyDifferent(currentSamples, previousSamples);
 }
 
 void Encoder::encode(std::string inputDir, std::string outputFile, float quality, std::string format, glm::ivec2 keyCoords, int keyInterval, float aspect, glm::vec2 focusRange)
@@ -98,8 +100,8 @@ void Encoder::determineReferenceFrame(glm::ivec2 inputKeyCoords, std::string inp
     if(inputKeyCoords == glm::ivec2(-1, -1))
     {
         std::cout << "Running automatic keyframe detection" << std::endl;
-        KeyFrameAnalyzer keyFrameAnalyzer(inputDir);
-        auto fileName = keyFrameAnalyzer.getBestKeyFrame();
+        KeyFrameAnalyzer keyFrameAnalyzer;
+        auto fileName = keyFrameAnalyzer.getBestKeyFrame(inputDir);
         referenceCoords = Muxing::parseFilename(fileName);
     }
    

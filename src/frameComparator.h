@@ -9,7 +9,20 @@ class FrameComparator
         class Metrics
         {
             public:
-            float psnr, ssim, vmaf;
+            float psnr{0}, ssim{0}, vmaf{0};
+            int addCount{0};
+            Metrics average()
+            {
+                return {psnr/addCount, ssim/addCount, vmaf/addCount};
+            }
+            Metrics& operator+=(const Metrics& rhs)
+            {
+                this->psnr += rhs.psnr;
+                this->ssim += rhs.ssim;
+                this->vmaf += rhs.vmaf;
+                addCount++;
+                return *this;
+            }
         };
 
         FrameComparator(const AVCodecContext *sampleCodecContext);
