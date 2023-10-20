@@ -268,5 +268,8 @@ void Encoder::PairEncoder::encode()
         buffer->insert(buffer->end(), &packet->data[0], &packet->data[packet->size]);
         buffer = &framePacket;
     }
+    av_frame_free(&convertedReference);
+    av_frame_free(&convertedFrame);
+
 }
 
