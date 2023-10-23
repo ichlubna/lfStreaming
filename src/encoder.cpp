@@ -77,6 +77,7 @@ bool Encoder::isCurrentKeyFrame(int keyInterval, std::filesystem::path inputDir,
 
 void Encoder::encode(std::string inputDir, std::string outputFile, float quality, std::string format, glm::ivec2 keyCoords, int keyInterval, float aspect, glm::vec2 focusRange)
 {
+    std::cout << "Starting encoding in format " << format << std::endl; 
     av_log_set_level(AV_LOG_ERROR);
     checkDir(inputDir);
     auto timeFrameDirs = Muxing::listPath(inputDir);
@@ -118,7 +119,6 @@ void Encoder::determineReferenceFrame(glm::ivec2 inputKeyCoords, std::string inp
 
 void Encoder::encodeTimeFrame(std::string inputDir, float quality, std::string format, float aspect, glm::vec2 focusRange, glm::ivec2 keyCoords, bool isKeyFrame)
 {
-    std::cout << "Starting encoding in format " << format << std::endl; 
     checkDir(inputDir);
     DirInfo dirInfo(inputDir);
     auto videoFormat = stringToFormat(format);

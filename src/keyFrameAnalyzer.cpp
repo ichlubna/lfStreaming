@@ -60,11 +60,14 @@ std::filesystem::path KeyFrameAnalyzer::getBestKeyFrame(std::filesystem::path di
         auto files = selectFrames(directory, Muxing::parseFilename(candidateFile.path()),-1);  
         for(const auto &testedFile : files)
         {
-            comparator.pushReference(candidateFrame);
-            Frame testedFrame(testedFile);
-            comparator.pushDistorted(testedFrame);
-            FrameComparator::Metrics metrics = comparator.getMetrics();
-            bestMetrics.add(metrics.psnr, metrics.ssim, metrics.vmaf);
+            if(candidateFile.path() != testedFile)
+            {
+                comparator.pushReference(candidateFrame);
+                Frame testedFrame(testedFile);
+                comparator.pushDistorted(testedFrame);
+                FrameComparator::Metrics metrics = comparator.getMetrics();
+                bestMetrics.add(metrics.psnr, metrics.ssim, metrics.vmaf);
+            }
             bar.add();
         }
     }
