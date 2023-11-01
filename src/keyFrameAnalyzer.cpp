@@ -45,7 +45,8 @@ std::vector<std::filesystem::path> KeyFrameAnalyzer::selectFrames(std::filesyste
 std::filesystem::path KeyFrameAnalyzer::getBestKeyFrame(std::filesystem::path directory)
 { 
     size_t count = std::distance(std::filesystem::directory_iterator(directory), std::filesystem::directory_iterator{});
-    LoadingBar bar(count*count, true);
+    size_t sampleCount = 4;
+    LoadingBar bar(count*sampleCount, true);
     BestMetrics bestMetrics;
 
     std::filesystem::directory_iterator files(directory);
@@ -57,7 +58,7 @@ std::filesystem::path KeyFrameAnalyzer::getBestKeyFrame(std::filesystem::path di
     {
         Frame candidateFrame(candidateFile.path());
         bestMetrics.newCandidate(candidateFile.path());
-        auto files = selectFrames(directory, Muxing::parseFilename(candidateFile.path()),-1);  
+        auto files = selectFrames(directory, Muxing::parseFilename(candidateFile.path()),sampleCount);  
         for(const auto &testedFile : files)
         {
             if(candidateFile.path() != testedFile)
@@ -67,6 +68,7 @@ std::filesystem::path KeyFrameAnalyzer::getBestKeyFrame(std::filesystem::path di
                 comparator.pushDistorted(testedFrame);
                 FrameComparator::Metrics metrics = comparator.getMetrics();
                 bestMetrics.add(metrics.psnr, metrics.ssim, metrics.vmaf);
+                //std::cerr << metrics.psnr << " " << metrics.ssim << " " << metrics.vmaf << candidateFile << " " << testedFile << std::endl;
             }
             bar.add();
         }

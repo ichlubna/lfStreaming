@@ -2,6 +2,7 @@
 #include <vector>
 #include "muxing.h"
 
+#include <iostream>
 class KeyFrameAnalyzer
 {
     public:
@@ -19,14 +20,8 @@ class KeyFrameAnalyzer
                         size_t count{0};
                         std::filesystem::path path{""};
                     public:
-                        MetricResult(float startValue=0) : value{startValue}
+                        MetricResult(std::filesystem::path inPath="") : path{inPath}
                         {
-                        }
-                        void clear(std::filesystem::path newPath = "")
-                        {
-                            value = 0;
-                            count = 0;
-                            path = newPath;
                         }
                         [[nodiscard]] float average()
                         {
@@ -34,13 +29,13 @@ class KeyFrameAnalyzer
                         }
                         MetricResult& operator+=(const float& rhs)
                         {
-                            value += rhs;
-                            count++;
+                            this->value += rhs;
+                            this->count++;
                             return *this;
                         }
-                        [[nodiscard]] static MetricResult& min(MetricResult &a, MetricResult &b)
+                        [[nodiscard]] static MetricResult& max(MetricResult &a, MetricResult &b)
                         {
-                            if(a.average() < b.average())
+                            if(a.average() > b.average())
                                 return a;
                             return b;
                         }
@@ -53,28 +48,28 @@ class KeyFrameAnalyzer
                 void add(float inPsnr, float inSsim, float inVmaf)
                 {
                     currentPsnr += inPsnr;
-                    currentPsnr += inSsim;
-                    currentPsnr += inVmaf; 
+                    currentSsim += inSsim;
+                    currentVmaf += inVmaf; 
                 }
 
                 void newCandidate(std::filesystem::path path)
                 {    
-                    bestPsnr = MetricResult::min(bestPsnr, currentPsnr); 
-                    bestSsim = MetricResult::min(bestSsim, currentSsim); 
-                    bestVmaf = MetricResult::min(bestVmaf, currentVmaf);
-                    currentPsnr.clear(path); 
-                    currentSsim.clear(path); 
-                    currentVmaf.clear(path);
+                    bestPsnr = MetricResult::max(bestPsnr, currentPsnr); 
+                    bestSsim = MetricResult::max(bestSsim, currentSsim); 
+                    bestVmaf = MetricResult::max(bestVmaf, currentVmaf);
+                    currentPsnr = MetricResult(path); 
+                    currentSsim = MetricResult(path); 
+                    currentVmaf = MetricResult(path);
                 } 
 
                 [[nodiscard]] const std::filesystem::path result()
                 {
-                    return bestPsnr.result();
+                    return bestSsim.result();
                 }
             private:
-                MetricResult bestPsnr{FLT_MAX};
-                MetricResult bestSsim{FLT_MAX};
-                MetricResult bestVmaf{FLT_MAX};
+                MetricResult bestPsnr;
+                MetricResult bestSsim;
+                MetricResult bestVmaf;
                 MetricResult currentPsnr;
                 MetricResult currentSsim;
                 MetricResult currentVmaf; 

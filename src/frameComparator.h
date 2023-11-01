@@ -2,7 +2,7 @@
 extern "C" {
 #include <libavfilter/avfilter.h>
 }
-
+#include <iostream>
 class FrameComparator
 {
     public:
@@ -29,6 +29,7 @@ class FrameComparator
         ~FrameComparator()
         {
             av_frame_free(&resultFrame);
+            avfilter_graph_free(&filterGraph);
         }
         void pushReference(Frame &frame);
         void pushDistorted(Frame &frame);
@@ -41,6 +42,13 @@ class FrameComparator
         AVFilterContext *bufferSinkVmafCtx;
         AVFilterContext *bufferRefCtx;
         AVFilterContext *bufferTestCtx;
+        AVFilterContext *psnrFilterCtx;
+        AVFilterContext *ssimFilterCtx;
+        AVFilterContext *vmafFilterCtx;
+        AVFilterContext *splitFilterRefCtx;
+        AVFilterContext *splitFilterTestCtx;
+        AVFilterContext *scaleFilterRefCtx;
+        AVFilterContext *scaleFilterTestCtx;
         AVFrame *resultFrame = av_frame_alloc();
         void printMetadata(AVDictionary *metadata) const;
             float getMetric(AVFilterContext  *filterContext, std::string dataName);
