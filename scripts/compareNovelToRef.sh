@@ -17,7 +17,7 @@ RESULTLOGVERBOSE=$6
 SCALE=5
 echo -n "" > $RESULTLOGVERBOSE
 
-$ENCODER -i "$INPUTFILES" -q 0.75 -f H265 -o $TESTFILE -a $ASPECT -s $FOCUS
+$ENCODER -i "$INPUTFILES" -q 0.75 -f H265 -k 4_4 -o $TESTFILE -a $ASPECT -s $FOCUS
 PSNR=0
 SSIM=0
 VMAF=0
@@ -28,7 +28,7 @@ do
     IFS='_' read -r -a COORDS <<< "$FILENAME"
     nx=$(bc <<< "scale=$SCALE;${COORDS[0]}/($GRID_WIDTH-1)")
     ny=$(bc <<< "scale=$SCALE;${COORDS[1]}/($GRID_HEIGHT-1)")
-    $STREAMER -i $TESTFILE -m PP -t "$nx"_"$ny" -o $WORKPATH
+    $STREAMER -i $TESTFILE -m OF_D -t "$nx"_"$ny" -o $WORKPATH
     OUTPUTFILES=($WORKPATH/*.ppm)
     OUTFILE=${OUTPUTFILES[0]}
     RESULT=$($METRICS $OUTFILE $file) 
