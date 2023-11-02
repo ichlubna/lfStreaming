@@ -38,7 +38,8 @@ void Decoder::setInterpolationMethod(std::string method)
     else
     {
         interpolationOrder = SelectedFrames::TOP_BOTTOM;
-        std::cout << "Selected interpolation method unknown - using default OF_TB." << std::endl;
+        usePerPixel = true;
+        std::cout << "Selected interpolation method unknown - using default PP." << std::endl;
     }
 }
 
