@@ -29,7 +29,7 @@ do
                 rm -rf $TEMP"/*"
         done
         $ENCODE_DECODE_PROP $INPUT_DATA $crf $TEMP $gop
-        METRICS=$($COMPARE $ORIGINAL $ENCODED)
+        METRICS=$($COMPARE $ORIGINAL $DECODED)
         NQ=$(bc <<< "scale=5;$crf/63")
         $ENCODER -i "$INPUT_DATA" -q $NQ -f AV1 -o $ENCODED_PROP -k 4_4 -a 1 -s 1
         SIZE=$(stat --printf="%s" $ENCODED_PROP)
