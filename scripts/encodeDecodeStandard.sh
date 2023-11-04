@@ -11,7 +11,7 @@ mkdir $OUT_ORIGINAL
 mkdir $OUT_DECODED
 ENCODED=$OUTDIR"/encoded.mkv"
 
-COUNTER=0
+COUNTER=1
 EXTENSION=""
 for file in $DIR/*
 do
