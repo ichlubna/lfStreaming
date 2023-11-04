@@ -23,5 +23,6 @@ do
 done
 
 $FFMPEG -i $OUT_ORIGINAL"/%04d."$EXTENSION -crf $CRF -g $GOP -c:v libaom-av1 -cpu-used 4 -row-mt 1 $ENCODED 
+$FFMPEG -i $ENCODED $OUT_DECODED"/%04d."$EXTENSION
 
 rm -rf $TEMP
