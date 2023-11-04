@@ -1,3 +1,4 @@
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:../build
 ENCODE_DECODE=./encodeDecodeStandard.sh
 ENCODE_DECODE_PROP=./encodeDecodeResult.sh
 COMPARE=./compareDirs.sh
