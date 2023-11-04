@@ -31,7 +31,7 @@ do
         done
         $ENCODE_DECODE_PROP $INPUT_DATA/01 04_04.png $crf $TEMP $gop
         METRICS=$($COMPARE $ORIGINAL $DECODED)
-        NQ=$(bc <<< "scale=5;$crf/63")
+        NQ=$(bc <<< "scale=5;1.0-$crf/63.0")
         $ENCODER -i "$INPUT_DATA" -q $NQ -f AV1 -o $ENCODED_PROP -k 4_4 -a 1 -s 1
         SIZE=$(stat --printf="%s" $ENCODED_PROP)
         TIME_STRING=$($STREAMER -i $ENCODED_PROP -m PP -t 0.5_0.5 -o $TEMP)
