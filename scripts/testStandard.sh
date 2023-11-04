@@ -20,7 +20,7 @@ do
         INPUT_DATA=$DATA"/"$scene"/inputs"
         for gop in 1 64 8
         do  
-                $ENCODE_DECODE $INPUT_DATA  $crf $TEMP $gop
+                $ENCODE_DECODE $INPUT_DATA/01  $crf $TEMP $gop
                 METRICS=$($COMPARE $ORIGINAL $ENCODED)
                 SIZE=$(stat --printf="%s" $ENCODED)
                 TIME_STRING=$($FFMPEG -hwaccel nvdec -c:v av1 -i $ENCODED -benchmark -f null - 2>&1)
@@ -28,7 +28,7 @@ do
                 echo $crf, $gop, $scene, $SIZE, $TIME, $METRICS >> $REPORT
                 rm -rf $TEMP"/*"
         done
-        $ENCODE_DECODE_PROP $INPUT_DATA $crf $TEMP $gop
+        $ENCODE_DECODE_PROP $INPUT_DATA/01 04_04.png $crf $TEMP $gop
         METRICS=$($COMPARE $ORIGINAL $DECODED)
         NQ=$(bc <<< "scale=5;$crf/63")
         $ENCODER -i "$INPUT_DATA" -q $NQ -f AV1 -o $ENCODED_PROP -k 4_4 -a 1 -s 1
