@@ -19,7 +19,7 @@ cp $DIR"/"$REFERENCE $INPUT"/01."$EXTENSION
 for file in $DIR/*
 do
     cp $file $INPUT"/02."$EXTENSION
-    $FFMPEG -i $INPUT"/%02d."$EXTENSION -crf $CRF -c:v $FORMAT $OUTPUT"/encoded.mkv"  
+    $FFMPEG -i $INPUT"/%02d."$EXTENSION -crf $CRF -c:v $FORMAT -cpu-used 8 -row-mt 1 -tiles 2x2 $OUTPUT"/encoded.mkv"  
     $FFMPEG -i $OUTPUT"/encoded.mkv" $OUTPUT"/%02d."$EXTENSION
     TRIMFILE=$(basename -- "$file")
     mv $OUTPUT"/02."$EXTENSION $OUTDIR"/"$TRIMFILE 
@@ -27,7 +27,7 @@ do
     rm $OUTPUT"/encoded.mkv"
     rm $OUTPUT"/01."$EXTENSION
 done
-$FFMPEG -i $INPUT"/%02d."$EXTENSION -crf $CRF -c:v $FORMAT $OUTPUT"/encoded.mkv"  
+$FFMPEG -i $INPUT"/%02d."$EXTENSION -crf $CRF -c:v $FORMAT -cpu-used 8 -row-mt 1 -tiles 2x2 $OUTPUT"/encoded.mkv"  
 $FFMPEG -i $OUTPUT"/encoded.mkv" $OUTPUT"/%02d."$EXTENSION
 TRIMFILE=$(basename -- "$REFERENCE")
 mv $OUTPUT"/01."$EXTENSION $OUTDIR"/"$TRIMFILE 
