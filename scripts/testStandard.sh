@@ -19,7 +19,7 @@ do
     for scene in animBonfire animKey animStreet animTimelapse
     do
         INPUT_DATA=$DATA"/"$scene"/inputs"
-        for gop in 1 64 8
+        for gop in 0 64 8
         do  
                 $ENCODE_DECODE $INPUT_DATA/01  $crf $TEMP $gop
                 METRICS=$($COMPARE $ORIGINAL $ENCODED)
