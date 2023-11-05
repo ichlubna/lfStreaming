@@ -22,7 +22,7 @@ do
     COUNTER=$((COUNTER+1))
 done
 
-$FFMPEG -i $OUT_ORIGINAL"/%04d."$EXTENSION -pix_fmt yuv420p -crf $CRF -g $GOP -c:v libaom-av1 -cpu-used 4 -row-mt 1 $ENCODED 
+$FFMPEG -i $OUT_ORIGINAL"/%04d."$EXTENSION -pix_fmt yuv420p -crf $CRF -g $GOP -keyint_min $GOP -c:v libaom-av1 -cpu-used 4 -row-mt 1 $ENCODED 
 $FFMPEG -i $ENCODED $OUT_DECODED"/%04d."$EXTENSION
 
 rm -rf $TEMP
