@@ -67,12 +67,15 @@ bool Encoder::isCurrentKeyFrame(int keyInterval, std::filesystem::path inputDir,
     if(keyInterval > 0)
         return (currentFrame % keyInterval) == 0;
 
+    return true;
+    /* Automatic keyframe in time according to the change in scene, not used according to measurements
     DirInfo currentDir(inputDir / *dirIterator);
     DirInfo previousDir(inputDir / *std::prev(dirIterator, 1));
     auto currentSamples = sampleDirectory(currentDir);
     auto previousSamples = sampleDirectory(previousDir);
     KeyFrameAnalyzer analyzer;
     return analyzer.isSignificantlyDifferent(currentSamples, previousSamples);
+    */
 }
 
 void Encoder::encode(std::string inputDir, std::string outputFile, float quality, std::string format, glm::ivec2 keyCoords, int keyInterval, float aspect, glm::vec2 focusRange)
