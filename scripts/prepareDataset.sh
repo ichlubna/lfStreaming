@@ -30,7 +30,7 @@ for FILE in $INPATH/*; do
     FILENAME=$(basename -- "$FILE")
     FILENAME="${FILENAME%.*}"
     mkdir $OUTPATH/$FILENAME
-    ffmpeg -i $FILE -vf scale=1920x1080 $OUTPATH/$FILENAME/%04d.png
+    ffmpeg -i $FILE $OUTPATH/$FILENAME/%04d.png
 done
 
 TEMP=$WORKPATH/temp
