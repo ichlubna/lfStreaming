@@ -6,11 +6,23 @@ mkdir $WORKPATH
 
 NAME=animBonfire
 
+#Comment for static scenes:
 wget https://merlin.fit.vutbr.cz/LightField/datasets/lfDataset/data/$NAME.7z -P $WORKPATH/
+
+#Use for static scenes:
+#wget https://merlin.fit.vutbr.cz/LightField/datasets/lfDataset/data/$NAME.mkv -P $WORKPATH/
+
 EXTRACTED=$WORKPATH/extracted
 mkdir $EXTRACTED
+
+#Comment for static scenes:
 7z x -y $WORKPATH/$NAME.7z -o$EXTRACTED/
+
 INPATH=$EXTRACTED/$NAME
+
+#Use for static scenes:
+#mkdir $INPATH
+#mv $WORKPATH/$NAME.mkv $INPATH
 
 OUTPATH=$WORKPATH/decoded
 mkdir $OUTPATH
